@@ -105,4 +105,7 @@ endforeach ()
 set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONTROL_EXTRA
         "${CMAKE_CURRENT_BINARY_DIR}/packaging/postinst;${CMAKE_CURRENT_BINARY_DIR}/packaging/prerm;${CMAKE_CURRENT_BINARY_DIR}/packaging/postrm")
 # phpapi-<api> is what Ubuntu's PHP provides for its module API: the package can't go into another.
-package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common")
+# The modules' packages are named, not left to dpkg-shlibdeps: on a build server the libraries it
+# links are the deploys' own copies in /usr/local/lib, which no package owns.
+package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common"
+        "simply-cpp (>= 1.14.1~)" "simply-cpp-image (>= 5.1.5~)" "simply-cpp-html2pdf (>= 1.0.5~)")
