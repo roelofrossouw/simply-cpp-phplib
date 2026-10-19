@@ -1,0 +1,3 @@
+; configuration for the simply-cpp (sc) module
+; priority=30
+extension=sc.so
