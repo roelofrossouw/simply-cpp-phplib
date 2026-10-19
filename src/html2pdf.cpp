@@ -163,7 +163,7 @@ namespace {
     ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_output, 0, 0, IS_STRING, 0)
     ZEND_END_ARG_INFO()
 
-    // The PDF as a string: written to a temporary file (PDFHummus writes files) and read back.
+    // The PDF as a string: written to a temporary file (sc-pdf writes files) and read back.
     ZEND_NAMED_FUNCTION(html2pdf_output) {
         ZEND_PARSE_PARAMETERS_NONE();
         std::string bytes;
