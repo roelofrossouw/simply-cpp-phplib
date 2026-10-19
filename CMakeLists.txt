@@ -22,7 +22,7 @@ message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 # runtime packages), not copied into it.
 find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.14.1)
 find_or_install_package(sc-image simply-cpp-image-dev simply-cpp-image 5.1.5)
-find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 1.0.5)
+find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 1.1.0)
 
 ## PHP ##
 # An extension is built for one PHP version: the one each Ubuntu release ships (jammy 8.1, noble
@@ -110,4 +110,4 @@ set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONTROL_EXTRA
 # The modules' packages are named, not left to dpkg-shlibdeps: on a build server the libraries it
 # links are the deploys' own copies in /usr/local/lib, which no package owns.
 package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common"
-        "simply-cpp (>= 1.14.1~)" "simply-cpp-image (>= 5.1.5~)" "simply-cpp-html2pdf (>= 1.0.5~)")
+        "simply-cpp (>= 1.14.1~)" "simply-cpp-image (>= 5.1.5~)" "simply-cpp-html2pdf (>= 1.1.0~)")
