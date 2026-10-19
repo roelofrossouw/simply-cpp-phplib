@@ -30,6 +30,8 @@ unlink($file);
 $locked = (new SC\Html2Pdf('<p>secret</p>', ['user_password' => 'open']))->output();
 check(str_contains($locked, '/Encrypt'), 'a password encrypts it');
 
+$builtin = (new SC\Html2Pdf('<p style="font-family: Arial">Plain</p>', ['builtin_fonts' => true]))->output();
+check(str_contains($builtin, '/BaseFont /Helvetica') && !str_contains($builtin, '/FontFile'), 'built-in fonts: nothing embedded');
 check(throws(fn() => new SC\Html2Pdf('<p>x</p>', ['sise' => 'A4'])), 'an unknown option throws');
 check(throws(fn() => new SC\Html2Pdf('<p>x</p>', ['size' => 'B7'])), 'an unknown size throws');
 check(throws(fn() => new SC\Html2Pdf('<p>x</p>', ['margins' => 5])), 'margins must be an array');

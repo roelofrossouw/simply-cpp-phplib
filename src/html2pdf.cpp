@@ -71,7 +71,7 @@ namespace {
     sc::html2pdf::options options_of(HashTable *given) {
         check_keys(given, "option",
                    {"size", "landscape", "margins", "header", "footer", "css", "base_url", "media", "toc_page", "toc_title", "outline",
-                    "metadata", "user_password", "owner_password", "split_boxes", "draw_margins"});
+                    "metadata", "user_password", "owner_password", "split_boxes", "draw_margins", "builtin_fonts"});
         sc::html2pdf::options settings;
         if (zval *v = find(given, "size")) settings.size = sc::page_size_from(text_of(v));
         if (zval *v = find(given, "landscape")) settings.turned = zend_is_true(v) ? sc::orientation::landscape : sc::orientation::portrait;
@@ -115,6 +115,7 @@ namespace {
         }
         if (zval *v = find(given, "split_boxes")) settings.split_boxes = zend_is_true(v);
         if (zval *v = find(given, "draw_margins")) settings.draw_margins = zend_is_true(v);
+        if (zval *v = find(given, "builtin_fonts")) settings.builtin_fonts = zend_is_true(v);
         return settings;
     }
 
