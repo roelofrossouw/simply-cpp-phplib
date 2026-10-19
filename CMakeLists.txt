@@ -22,7 +22,7 @@ message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 # runtime packages), not copied into it.
 find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.14.1)
 find_or_install_package(sc-image simply-cpp-image-dev simply-cpp-image 5.1.5)
-find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 1.1.0)
+find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 1.2.0)
 
 ## PHP ##
 # An extension is built for one PHP version: the one each Ubuntu release ships (jammy 8.1, noble
