@@ -34,6 +34,12 @@ throws, so a typo shows. Every failure is an `SC\Exception` (an `Exception`).
 [HTML to PDF guide](https://github.com/roelofrossouw/simply-cpp/wiki/HTML-to-PDF) covers what the
 HTML can do.
 
+**IDEs:** `stubs/sc.stub.php`, installed as `/usr/share/doc/simply-cpp-phplib/sc.stub.php`,
+describes all of it with types and documentation. Add that folder to PhpStorm's include path
+(Settings > PHP > Include Path) or to Intelephense's `intelephense.environment.includePaths`, and
+`SC\Html2Pdf`, its options and the functions autocomplete. A test checks the stubs against the
+extension.
+
 ## Install
 
 ```bash
