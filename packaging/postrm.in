@@ -1,0 +1,9 @@
+#!/bin/sh
+# Restarts php-fpm (when it runs) once the sc extension is gone.
+set -e
+if [ "$1" = remove ] || [ "$1" = purge ]; then
+    if [ -d /run/systemd/system ]; then
+        systemctl try-restart php@SC_PHPLIB_PHP_MINOR@-fpm.service || true
+    fi
+fi
+exit 0

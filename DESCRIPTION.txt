@@ -1,0 +1,1 @@
+PHP extension (sc): simply-cpp's html2pdf, SVG to PNG and base64 for PHP, as the SC namespace

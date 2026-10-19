@@ -1,0 +1,13 @@
+#!/bin/sh
+# Enables the sc extension for every PHP @SC_PHPLIB_PHP_MINOR@ SAPI and restarts php-fpm (when it
+# runs), on install and upgrade.
+set -e
+if [ "$1" = configure ]; then
+    if command -v phpenmod >/dev/null 2>&1; then
+        phpenmod -v @SC_PHPLIB_PHP_MINOR@ -s ALL sc || true
+    fi
+    if [ -d /run/systemd/system ]; then
+        systemctl try-restart php@SC_PHPLIB_PHP_MINOR@-fpm.service || true
+    fi
+fi
+exit 0
