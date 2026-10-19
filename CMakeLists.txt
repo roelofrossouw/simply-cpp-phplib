@@ -73,6 +73,8 @@ endif ()
 
 # Turned on the Debian way: mods-available/sc.ini, enabled for every SAPI by phpenmod.
 configure_file(sc.ini.in sc.ini @ONLY)
+# Stubs for IDEs (PhpStorm, Intelephense): what the extension declares, documented.
+install(FILES stubs/sc.stub.php DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/simply-cpp-phplib COMPONENT runtime)
 if (SC_PHPLIB_INSTALL)
     install(TARGETS sc LIBRARY DESTINATION "${SC_PHPLIB_PHP_EXTENSION_DIR}" COMPONENT runtime)
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/sc.ini" DESTINATION "/etc/php/${SC_PHPLIB_PHP_MINOR}/mods-available" COMPONENT runtime)
