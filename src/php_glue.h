@@ -33,6 +33,15 @@ namespace sc::php {
         }
     }
 
+    // guarded(make), then the string it made as the function's return value.
+    template<typename Make>
+    void return_guarded_string(zval *return_value, Make make) {
+        std::string out;
+        guarded([&] { out = make(); });
+        if (EG(exception)) RETURN_THROWS();
+        RETURN_STRINGL(out.data(), out.size());
+    }
+
     inline std::string_view view(const zend_string *text) { return {ZSTR_VAL(text), ZSTR_LEN(text)}; }
 
     // An array's value by key, or nullptr.

@@ -15,10 +15,7 @@ namespace {
         ZEND_PARSE_PARAMETERS_START(1, 1)
             Z_PARAM_STR(data)
         ZEND_PARSE_PARAMETERS_END();
-        std::string out;
-        sc::php::guarded([&] { out = sc::base64::encode(sc::php::view(data)); });
-        if (EG(exception)) RETURN_THROWS();
-        RETURN_STRINGL(out.data(), out.size());
+        sc::php::return_guarded_string(return_value, [&] { return sc::base64::encode(sc::php::view(data)); });
     }
 
     ZEND_NAMED_FUNCTION(sc_base64_decode) {
@@ -26,10 +23,7 @@ namespace {
         ZEND_PARSE_PARAMETERS_START(1, 1)
             Z_PARAM_STR(data)
         ZEND_PARSE_PARAMETERS_END();
-        std::string out;
-        sc::php::guarded([&] { out = sc::base64::decode(sc::php::view(data)); });
-        if (EG(exception)) RETURN_THROWS();
-        RETURN_STRINGL(out.data(), out.size());
+        sc::php::return_guarded_string(return_value, [&] { return sc::base64::decode(sc::php::view(data)); });
     }
 
     const zend_function_entry functions[] = {

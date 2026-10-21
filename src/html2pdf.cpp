@@ -12,14 +12,9 @@
 #include <html2pdf.h>
 
 #include <algorithm>
-#include <atomic>
 #include <cstring>
 #include <memory>
-#include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <stdexcept>
-#include <unistd.h>
 
 namespace {
     zend_class_entry *html2pdf_class = nullptr;
@@ -106,11 +101,11 @@ namespace {
                 if (key) settings.metadata[std::string{sc::php::view(key)}] = text_of(value);
             } ZEND_HASH_FOREACH_END();
         }
-        const zval *user = find(given, "user_password"), *owner = find(given, "owner_password");
+        zval *user = find(given, "user_password"), *owner = find(given, "owner_password");
         if (user || owner) {
             sc::pdf::protection locked;
-            if (user) locked.user_password = text_of(const_cast<zval *>(user));
-            if (owner) locked.owner_password = text_of(const_cast<zval *>(owner));
+            if (user) locked.user_password = text_of(user);
+            if (owner) locked.owner_password = text_of(owner);
             if (!locked.user_password.empty() || !locked.owner_password.empty()) settings.protection = locked;
         }
         if (zval *v = find(given, "split_boxes")) settings.split_boxes = zend_is_true(v);
@@ -163,27 +158,10 @@ namespace {
     ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_output, 0, 0, IS_STRING, 0)
     ZEND_END_ARG_INFO()
 
-    // The PDF as a string: written to a temporary file (sc-pdf writes files) and read back.
+    // The PDF as a string: what save() writes (bytes()).
     ZEND_NAMED_FUNCTION(html2pdf_output) {
         ZEND_PARSE_PARAMETERS_NONE();
-        std::string bytes;
-        sc::php::guarded([&] {
-            static std::atomic<unsigned> counter{0};
-            const auto file = std::filesystem::temp_directory_path() /
-                              ("sc-html2pdf-" + std::to_string(::getpid()) + "-" + std::to_string(counter++) + ".pdf");
-            struct removed {
-                std::filesystem::path path;
-                ~removed() {
-                    std::error_code ignored;
-                    std::filesystem::remove(path, ignored);
-                }
-            } cleanup{file};
-            laid_out(ZEND_THIS).save(file);
-            std::ifstream in{file, std::ios::binary};
-            bytes.assign(std::istreambuf_iterator<char>{in}, {});
-        });
-        if (EG(exception)) RETURN_THROWS();
-        RETURN_STRINGL(bytes.data(), bytes.size());
+        sc::php::return_guarded_string(return_value, [&] { return laid_out(ZEND_THIS).bytes(); });
     }
 
     ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_page_count, 0, 0, IS_LONG, 0)
