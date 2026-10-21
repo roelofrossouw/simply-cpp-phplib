@@ -23,15 +23,12 @@ namespace {
             Z_PARAM_LONG(width)
             Z_PARAM_LONG(height)
         ZEND_PARSE_PARAMETERS_END();
-        std::string png;
-        sc::php::guarded([&] {
+        sc::php::return_guarded_string(return_value, [&] {
             if (width < 0 || height < 0) throw std::invalid_argument{"SC\\svg_to_png: the width and height can't be negative"};
-            png = width == 0 && height == 0 ? sc::svg2png::FromString(sc::php::view(svg))
-                                            : sc::svg2png::FromString(sc::php::view(svg), static_cast<int>(width), static_cast<int>(height),
-                                                                      sc::color{1, 1, 1});
+            return width == 0 && height == 0 ? sc::svg2png::FromString(sc::php::view(svg))
+                                             : sc::svg2png::FromString(sc::php::view(svg), static_cast<int>(width), static_cast<int>(height),
+                                                                       sc::color{1, 1, 1});
         });
-        if (EG(exception)) RETURN_THROWS();
-        RETURN_STRINGL(png.data(), png.size());
     }
 
     const zend_function_entry functions[] = {
