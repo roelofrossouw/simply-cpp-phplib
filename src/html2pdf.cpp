@@ -20,7 +20,6 @@ namespace {
     zend_class_entry *html2pdf_class = nullptr;
     zend_object_handlers handlers;
 
-    // The PHP object, with the laid out document in front of PHP's own part.
     struct html2pdf_object {
         sc::html2pdf *pdf;
         zend_object std;
@@ -43,8 +42,6 @@ namespace {
         delete object_of(object)->pdf;
         zend_object_std_dtor(object);
     }
-
-    // ------------------------------------------------------------ the options array
 
     using sc::php::find;
     using sc::php::text_of;
@@ -119,8 +116,6 @@ namespace {
         if (!pdf) throw std::logic_error{"SC\\Html2Pdf: not constructed"};
         return *pdf;
     }
-
-    // ------------------------------------------------------------ the methods
 
     ZEND_BEGIN_ARG_INFO_EX(arginfo_construct, 0, 0, 1)
         ZEND_ARG_TYPE_INFO(0, html, IS_STRING, 0)

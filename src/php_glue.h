@@ -1,8 +1,5 @@
 #pragma once
 
-// What every part of the extension shares: PHP's headers, the SC\Exception class, how a C++
-// exception becomes a PHP one, reading arguments, and how a part (an "area") plugs in.
-//
 // An area is one file: its functions (zend_function_entry, ending with ZEND_FE_END) and, when it
 // has classes, a startup() that registers them. sc_php.cpp lists the areas; adding one is a file
 // and a line there.
@@ -16,7 +13,6 @@
 #include <string_view>
 
 namespace sc::php {
-    // SC\Exception, an \Exception: what every C++ failure becomes.
     extern zend_class_entry *exception_class;
 
     // Runs body; a C++ exception becomes an SC\Exception. PHP's own errors don't longjmp out of
@@ -44,7 +40,6 @@ namespace sc::php {
 
     inline std::string_view view(const zend_string *text) { return {ZSTR_VAL(text), ZSTR_LEN(text)}; }
 
-    // An array's value by key, or nullptr.
     inline zval *find(HashTable *table, const std::string_view key) { return zend_hash_str_find(table, key.data(), key.size()); }
 
     // A value as text (numbers and booleans converted, as PHP would).
