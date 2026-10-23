@@ -1,7 +1,7 @@
 # simply-cpp-phplib
 
 The `sc` PHP extension: simply-cpp's libraries for PHP, in the `SC` namespace. It's a thin
-wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-image, sc-core),
+wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-image, sc-core),
 which its package depends on. Apache-2.0, as everything it links is (no AGPL modules).
 
 ```php
@@ -22,6 +22,13 @@ $pdf->pageCount();
 $pdf->save('/tmp/invoice.pdf');
 header('Content-Type: application/pdf');
 echo $pdf->output();                    // the PDF as a string
+
+// Existing PDFs written again (sc-pdflite): merged, decorated, protected; any PDF, encrypted or damaged
+SC\Pdf::merge(['/tmp/invoice.pdf', $appendix], '/tmp/invoice.pdf');  // into the first one
+SC\Pdf::decorate('/tmp/invoice.pdf', $letterhead, '/tmp/invoice.pdf'); // its pages behind; 'over' for a stamp
+SC\Pdf::protect('/tmp/invoice.pdf', '/tmp/invoice.pdf', ['owner_password' => $secret,
+                 'permissions' => ['annotate' => true]]);          // print and annotate, nothing else
+SC\Pdf::pageCount('/tmp/invoice.pdf');
 
 $png = SC\svg_to_png($svg, 800);        // 800 wide; width and height 0 (the default): its own size
 SC\base64_encode($bytes);               // SC\base64_decode() throws for text that isn't base64

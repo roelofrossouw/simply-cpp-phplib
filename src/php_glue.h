@@ -58,4 +58,5 @@ namespace sc::php {
     area base64_area();
     area svg_area();
     area html2pdf_area();
+    area pdf_area();
 }

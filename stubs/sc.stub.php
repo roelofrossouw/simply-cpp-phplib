@@ -96,6 +96,67 @@ class Html2Pdf
 }
 
 /**
+ * Existing PDFs written again: pages merged, a letterhead or stamp drawn on every page, passwords
+ * added. Any PDF reads, encrypted ones (RC4, AES-128, AES-256) and damaged ones (repaired as
+ * they're read) too. The output may be one of the inputs: it's written beside it and renamed, so a
+ * failure leaves it as it was.
+ *
+ * $protection: 'user_password' (to open the file), 'owner_password' (every right), 'permissions'
+ * (what readers without the owner's password may do: 'print' and 'print_high_quality', true by
+ * default; 'copy', 'modify', 'annotate', 'fill_forms', 'assemble', false). No password: none is
+ * added. The encryption is AES-256.
+ *
+ * @link https://github.com/roelofrossouw/simply-cpp/wiki/PDF-Lite
+ */
+final class Pdf
+{
+    /**
+     * The files' pages, in order, into $output. The first file's title, bookmarks and named
+     * destinations are kept. Files are opened without a password: one encrypted with an owner
+     * password only reads.
+     *
+     * @param string[] $files
+     * @param array{user_password?: string, owner_password?: string, permissions?: array<string, bool>} $protection
+     * @throws Exception For a file that can't be read, no pages at all, or an option it doesn't know.
+     */
+    public static function merge(array $files, string $output, array $protection = []): void
+    {
+    }
+
+    /**
+     * $decoration's page n drawn on $file's page n, and its last page on the pages after (a one-page
+     * letterhead goes on every page), as pdftk's multibackground and multistamp do: upright as each
+     * page is shown, scaled to fit and centred.
+     *
+     * @param 'behind'|'over' $layer Behind the page's content (a background) or over it (a stamp).
+     * @param array{user_password?: string, owner_password?: string, permissions?: array<string, bool>} $protection
+     * @throws Exception For a file that can't be read, or a decoration without pages.
+     */
+    public static function decorate(string $file, string $decoration, string $output, string $layer = 'behind', array $protection = []): void
+    {
+    }
+
+    /**
+     * $file written again with passwords; $password opens it when it's encrypted already.
+     *
+     * @param array{user_password?: string, owner_password?: string, permissions?: array<string, bool>} $protection
+     * @throws Exception For no password given, or a file that can't be read.
+     */
+    public static function protect(string $file, string $output, array $protection, string $password = ''): void
+    {
+    }
+
+    /**
+     * The file's pages; $password opens it when it needs one.
+     *
+     * @throws Exception For a file that can't be read.
+     */
+    public static function pageCount(string $file, string $password = ''): int
+    {
+    }
+}
+
+/**
  * An SVG as a PNG, at its own size, or $width and/or $height pixels (one of them 0 keeps the aspect
  * ratio), on white.
  *
