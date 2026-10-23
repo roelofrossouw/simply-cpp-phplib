@@ -19,6 +19,13 @@ SC\Pdf::merge([$report, $appendix], $report);
 check(SC\Pdf::pageCount($report) === 3, 'merged: 3 pages');
 check(str_contains(file_get_contents($report), 'The report'), "the first file's title is kept");
 
+// Pictures as pages: a PNG (written here) the size of the page before it.
+$png = "$dir/picture.png"; // a 1x1 PNG, from its bytes (the tests run with only sc loaded: no GD)
+file_put_contents($png, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='));
+SC\Pdf::merge([$report, $png], "$dir/with-picture.pdf");
+check(SC\Pdf::pageCount("$dir/with-picture.pdf") === 4, 'a PNG appended as a page');
+check(throws(fn() => SC\Pdf::merge([$report, __FILE__], "$dir/x.pdf")), "a file that's neither PDF nor picture throws");
+
 // decorate(): behind, and over.
 SC\Pdf::decorate($report, $letterhead, "$dir/behind.pdf");
 check(SC\Pdf::pageCount("$dir/behind.pdf") === 3, 'decorated: still 3 pages');

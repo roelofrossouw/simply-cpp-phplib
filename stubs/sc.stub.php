@@ -113,7 +113,10 @@ final class Pdf
     /**
      * The files' pages, in order, into $output. The first file's title, bookmarks and named
      * destinations are kept. Files are opened without a password: one encrypted with an owner
-     * password only reads.
+     * password only reads. A JPEG or PNG among them (known by its first bytes) becomes a page the
+     * size of the page before it (the next file's first page when it comes first; A4 without any
+     * PDF), upright by its EXIF orientation, scaled to fit and centred; other picture formats need
+     * converting first.
      *
      * @param string[] $files
      * @param array{user_password?: string, owner_password?: string, permissions?: array<string, bool>} $protection
