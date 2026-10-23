@@ -24,7 +24,7 @@ header('Content-Type: application/pdf');
 echo $pdf->output();                    // the PDF as a string
 
 // Existing PDFs written again (sc-pdflite): merged, decorated, protected; any PDF, encrypted or damaged
-SC\Pdf::merge(['/tmp/invoice.pdf', $appendix], '/tmp/invoice.pdf');  // into the first one
+SC\Pdf::merge(['/tmp/invoice.pdf', $appendix, 'photo.jpg'], '/tmp/invoice.pdf');  // into the first one; a JPEG or PNG a page
 SC\Pdf::decorate('/tmp/invoice.pdf', $letterhead, '/tmp/invoice.pdf'); // its pages behind; 'over' for a stamp
 SC\Pdf::protect('/tmp/invoice.pdf', '/tmp/invoice.pdf', ['owner_password' => $secret,
                  'permissions' => ['annotate' => true]]);          // print and annotate, nothing else
