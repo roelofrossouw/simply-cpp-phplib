@@ -52,7 +52,8 @@ class Html2Pdf
      *     owner_password?: string,
      *     split_boxes?: bool,
      *     draw_margins?: bool,
-     *     builtin_fonts?: bool
+     *     builtin_fonts?: bool,
+     *     image_resolution?: float
      * } $options size: the paper, in any case (default A4). margins: in mm (top 10, right 10,
      *     bottom 10, left 30; first_top 60, the first page's top, null for the same as the others).
      *     header, footer: HTML on every page. css: for the content, header and footer. base_url: what
@@ -62,6 +63,8 @@ class Html2Pdf
      *     every right. split_boxes: cut boxes across pages as browsers print, rather than moving them
      *     whole. draw_margins: outline the margins, header and footer. builtin_fonts: text in PDF's
      *     built-in Helvetica, Times and Courier (CSS families map to them), embedding none.
+     *     image_resolution: PNGs written at most about this many pixels per inch where they're
+     *     shown (150, the default; 0 keeps them as they are). Each image is written once.
      * @throws Exception For an unknown option or a value it can't use.
      */
     public function __construct(string $html, array $options = [])

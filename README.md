@@ -17,6 +17,7 @@ $pdf = new SC\Html2Pdf($html, [
     'metadata' => ['Title' => 'Invoice', 'Author' => 'Accounts'],
     'user_password' => 'open',          // and 'owner_password'
     'builtin_fonts' => true,            // PDF's built-in Helvetica, Times, Courier: nothing embedded
+    'image_resolution' => 150,          // PNGs scaled down to this many pixels an inch (the default; 0 keeps them)
 ]);
 $pdf->pageCount();
 $pdf->save('/tmp/invoice.pdf');
