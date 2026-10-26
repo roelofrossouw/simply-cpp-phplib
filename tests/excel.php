@@ -90,7 +90,8 @@ check(!isset($sheet['E1']), 'unset() removes a cell');
 check(json_decode(json_encode($sheet['B2']), true) === ['row' => 1, 'column' => 1, 'name' => 'B2', 'value' => 18.5, 'formula' => '',
       'style' => ['font' => ['size' => null, 'color' => null, 'bold' => false, 'italic' => false, 'underline' => null], 'background' => null,
                   'borders' => ['left' => ['line' => null, 'color' => null], 'right' => ['line' => null, 'color' => null],
-                                'top' => ['line' => null, 'color' => null], 'bottom' => ['line' => null, 'color' => null]]]],
+                                'top' => ['line' => null, 'color' => null], 'bottom' => ['line' => null, 'color' => null]],
+                  'alignment' => ['horizontal' => 'general', 'vertical' => 'bottom', 'wrap' => false, 'indent' => 0], 'numberFormat' => '']],
       'json_encode() shows a cell');
 
 // Styles: a part at a time, as an array, or another cell's; column widths.
@@ -156,6 +157,25 @@ check(throws(function () use ($s) { $s['E1']->style->font->underline = 'wavy'; }
 check(throws(function () use ($s) { $s['E1']->style->borders = ['left' => 'thin', 'diagonal' => 'thin']; }), 'a side borders lack throws');
 check(throws(function () use ($s) { $s['E1']->style->borders->left->width = 2; }), 'a property edges lack throws');
 
+// Alignment and number formats.
+$s['A3'] = 1234.5;
+$s['A3']->style->numberFormat = '#,##0.00';
+$s['B3'] = 0.25;
+$s['B3']->style = ['numberFormat' => '0.0%', 'alignment' => ['horizontal' => 'center', 'vertical' => 'top', 'wrap' => true, 'indent' => 2]];
+check($s['A3']->style->numberFormat === '#,##0.00' && $s['C3']->style->numberFormat === '', 'a number format; General is ""');
+check($s['B3']->style->alignment->horizontal === 'center' && $s['B3']->style->alignment->vertical === 'top', 'alignment by name');
+check($s['B3']->style->alignment->wrap && $s['B3']->style->alignment->indent === 2, 'wrap and indent');
+check($s['A3']->style->alignment->horizontal === 'general' && $s['A3']->style->alignment->vertical === 'bottom', "Excel's defaults");
+$s['C3']->style->alignment = $s['B3']->style->alignment;
+$s['C3']->style->alignment->horizontal = null;
+check($s['C3']->style->alignment->horizontal === 'general' && $s['C3']->style->alignment->wrap, "another cell's alignment; null: general");
+$s['C3']->style->numberFormat = null;
+check($s['C3']->style->numberFormat === '', 'null: General');
+check(throws(function () use ($s) { $s['A3']->style->alignment->horizontal = 'middle'; }), "an alignment Excel doesn't name throws");
+check(throws(function () use ($s) { $s['A3']->style->alignment->indent = 251; }), 'an indent beyond 250 throws');
+check(throws(function () use ($s) { $s['A3']->style->alignment = ['rotate' => 90]; }), 'a key alignments lack throws');
+check(throws(function () use ($s) { $s['A3']->style->numberFormat = str_repeat('0', 256); }), 'a number format beyond 255 characters throws');
+
 check($s->width('A') === null, 'a column without a width: null');
 check($s->width('A', 30) === 30.0 && $s->width(0) === 30.0, 'width() sets and reads, by letters or number');
 $s->width('B', 12.5);
@@ -177,6 +197,8 @@ check($t['E1']->style->font->italic && $t['E1']->style->font->underline === 'dou
 check($t['E1']->style->borders->bottom->line === 'double' && $t['E1']->style->borders->bottom->color === '#1f4e79'
       && $t['E1']->style->borders->top->color === '#ff0000' && $t['E1']->style->borders->left->line === 'thin', 'borders read back');
 check(isset($t['F1']) && $t['F1']->style->borders->top->line === 'thin', 'a cell with only borders read back');
+check($t['A3']->style->numberFormat === '#,##0.00' && $t['B3']->style->numberFormat === '0.0%', 'number formats read back');
+check($t['B3']->style->alignment->horizontal === 'center' && $t['B3']->style->alignment->indent === 2, 'alignment read back');
 
 // Mistakes.
 check(throws(fn() => Workbook::open("$dir/missing.xlsx")), 'a missing file throws');

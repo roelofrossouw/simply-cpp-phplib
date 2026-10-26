@@ -196,8 +196,8 @@ use SC\Exception;
  * the cells that are set, with their values and formulas. Works like an array of sheets, found by
  * name ignoring case, as Excel does. Sheets, rows, cells and their styles are views into it (they
  * keep it alive): changing one changes the workbook. Cells have a style (font size, colour, bold,
- * italic and underline; a background; borders) and columns a width; no other formatting, merged
- * cells or pictures.
+ * italic and underline; a background; borders; alignment; a number format) and columns a width;
+ * no merged cells or pictures.
  *
  *     $book = Workbook::open('prices.xlsx');
  *     foreach ($book as $sheet)
@@ -210,6 +210,8 @@ use SC\Exception;
  *     $out['Prices']['A1']->style->font->bold = true;
  *     $out['Prices']['A1']->style->background = '#ddebf7';
  *     $out['Prices']['A1']->style->borders->bottom = 'double';
+ *     $out['Prices']['A1']->style->alignment->horizontal = 'center';
+ *     $out['Prices']['B2']->style->numberFormat = '#,##0.00';
  *     $out['Prices']->width('A', 20);         // characters
  *     $out->save('out.xlsx');
  *
@@ -442,8 +444,9 @@ final class Cell
     public string $formula;
     /**
      * How it looks. Set it to another cell's style, an array ['font' => ['size' => 14, 'color' =>
-     * '#1f4e79', 'bold' => true], 'background' => '#ddebf7', 'borders' => 'thin'] (what's left out
-     * is the default), or null for the plain style; or change it a part at a time:
+     * '#1f4e79', 'bold' => true], 'background' => '#ddebf7', 'borders' => 'thin', 'alignment' =>
+     * ['horizontal' => 'center'], 'numberFormat' => '0.00'] (what's left out is the default), or
+     * null for the plain style; or change it a part at a time:
      * $cell->style->font->bold = true.
      */
     public Style $style;
@@ -476,6 +479,54 @@ final class Style
      * sides ('thin', ['line' => 'thin', 'color' => '#1f4e79'], an Edge), or null for none.
      */
     public Borders $borders;
+    /**
+     * Where its text sits. Set it to another cell's, ['horizontal' => 'center', 'vertical' =>
+     * 'top', 'wrap' => true, 'indent' => 1] (what's left out is the default) or null.
+     */
+    public Alignment $alignment;
+    /**
+     * Excel's format code: "0.00", "#,##0", "0%", "yyyy-mm-dd", "h:mm", "@" (text),
+     * '"R" #,##0.00'; "" for General (null sets General too). A date is a number, days since
+     * 1899-12-30, shown as one by a date format. Excel's built-in format 14 (the reader's own short
+     * date) reads as "mm-dd-yy".
+     *
+     * @throws Exception For a code longer than 255 characters.
+     */
+    public string $numberFormat;
+
+    private function __construct()
+    {
+    }
+}
+
+/**
+ * Where a cell's text sits, a view into its cell.
+ */
+final class Alignment
+{
+    /**
+     * Across the cell, by Excel's name: "general" (text left, numbers right; the default), "left",
+     * "center", "right", "fill", "justify", "centerContinuous" (across the empty cells to the
+     * right), "distributed". Null sets "general".
+     *
+     * @throws Exception For a name Excel doesn't have.
+     */
+    public string $horizontal;
+    /**
+     * Up and down: "bottom" (the default), "top", "center", "justify", "distributed". Null sets
+     * "bottom".
+     *
+     * @throws Exception For a name Excel doesn't have.
+     */
+    public string $vertical;
+    /** Whether long text wraps onto more lines. */
+    public bool $wrap;
+    /**
+     * Indented by so many steps (about three characters each), from 0 to 250.
+     *
+     * @throws Exception For anything else.
+     */
+    public int $indent;
 
     private function __construct()
     {

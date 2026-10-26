@@ -44,6 +44,8 @@ $out['Prices']['B2'] = 18.5;            // null, a number, text or a bool
 $out['Prices']['B3']->formula = '=B2*2';
 $out['Prices']['B3']->style->font->bold = true;         // or ->style = ['font' => [...], 'background' => '#ddebf7']
 $out['Prices']['B3']->style->borders->bottom = 'double'; // or ->borders = 'thin', all four sides
+$out['Prices']['B3']->style->numberFormat = '#,##0.00';
+$out['Prices']['A1']->style->alignment->horizontal = 'center';
 $out['Prices']->width('A', 20);         // in characters, as Excel shows it
 unset($out['Prices']['A1']);
 $out->save('/tmp/prices.xlsx');         // or $out->output(), the .xlsx as a string
@@ -62,8 +64,9 @@ sc-office's C++ classes: sheets are found by name ignoring case, cells by name (
 `row`, `column`, `name`, `value` (numbers are floats; dates are numbers, days since 1899-12-30) and
 `formula` (`"=C6"`) and `style`: a `Style` with a `font` (`size` in points, `color`, `bold`,
 `italic`, `underline`), a `background` and `borders` (`left`, `right`, `top`, `bottom`, each an
-`Edge` with a `line` such as `"thin"` or `"double"` and a `color`), colours as `"#rrggbb"` (set as
-any CSS colour). `$sheet->width('B', 20)` sets a
+`Edge` with a `line` such as `"thin"` or `"double"` and a `color`), an `alignment` (`horizontal`,
+`vertical`, `wrap`, `indent`) and a `numberFormat` (Excel's code: `"#,##0.00"`, `"0%"`,
+`"yyyy-mm-dd"`), colours as `"#rrggbb"` (set as any CSS colour). `$sheet->width('B', 20)` sets a
 column's width in characters, `$sheet->width('B')` reads it. Reading a cell that isn't there gives
 a null value and adds nothing; setting its value, formula or style adds it. Sheets, rows, cells and
 styles are views into their workbook, which they

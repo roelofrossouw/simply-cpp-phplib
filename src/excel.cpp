@@ -15,10 +15,12 @@
 //     $out['Prices']['A1']->style->font->bold = true;
 //     $out['Prices']['A1']->style->background = '#ddebf7';
 //     $out['Prices']['A1']->style->borders->bottom = 'double';
+//     $out['Prices']['A1']->style->alignment->horizontal = 'center';
+//     $out['Prices']['B2']->style->numberFormat = '#,##0.00';
 //     $out['Prices']->width('A', 20);         // characters
 //     $out->save('out.xlsx');                 // or $out->output(), the file as a string
 //
-// A Sheet, Row, Cell, Style, Font, Borders or Edge is a view into its workbook (which it keeps alive), not a
+// A Sheet, Row, Cell, Style, Font, Borders, Edge or Alignment is a view into its workbook (which it keeps alive), not a
 // copy: changing it changes the workbook. Every failure is an SC\Exception.
 
 #include "php_glue.h"
@@ -42,7 +44,7 @@ namespace {
     using sc::php::view;
 
     zend_class_entry *workbook_class = nullptr, *sheet_class = nullptr, *row_class = nullptr, *cell_class = nullptr, *style_class = nullptr,
-                     *font_class = nullptr, *borders_class = nullptr, *edge_class = nullptr;
+                     *font_class = nullptr, *borders_class = nullptr, *edge_class = nullptr, *alignment_class = nullptr;
     zend_object_handlers workbook_handlers, part_handlers;
 
     // ---- the objects ----
@@ -52,7 +54,7 @@ namespace {
         zend_object std;
     };
 
-    // A Sheet, Row, Cell, or a cell's Style, Font, Borders or Edge: its workbook's object (kept alive
+    // A Sheet, Row, Cell, or a cell's Style, Font, Borders, Edge or Alignment: its workbook's object (kept alive
     // while this one lives), the sheet, the row and column it stands for (as far as it has them), and
     // an Edge's side.
     struct part_object {
@@ -243,6 +245,32 @@ namespace {
         return excel::underline_named(view(Z_STR_P(given)));
     }
 
+    // How text sits across a cell, by Excel's name ("general", "left", "center", "right", "fill",
+    // "justify", "centerContinuous", "distributed"); null for general.
+    excel::horizontal horizontal_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL) return excel::horizontal::general;
+        if (Z_TYPE_P(given) != IS_STRING) throw std::invalid_argument{"SC\\Excel: a horizontal alignment is \"left\", \"center\" ... or null"};
+        return excel::horizontal_named(view(Z_STR_P(given)));
+    }
+
+    // How text sits up and down a cell ("bottom", "top", "center", "justify", "distributed"); null
+    // for bottom.
+    excel::vertical vertical_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL) return excel::vertical::bottom;
+        if (Z_TYPE_P(given) != IS_STRING) throw std::invalid_argument{"SC\\Excel: a vertical alignment is \"top\", \"center\" ... or null"};
+        return excel::vertical_named(view(Z_STR_P(given)));
+    }
+
+    // An indent, 0 to 250 steps.
+    unsigned indent_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) != IS_LONG || Z_LVAL_P(given) < 0 || Z_LVAL_P(given) > 250)
+            throw std::out_of_range{"SC\\Excel: an indent is a whole number from 0 to 250"};
+        return static_cast<unsigned>(Z_LVAL_P(given));
+    }
+
     // A border's line given: Excel's name ("thin", "double", "mediumDashDot" ...), or null for none.
     excel::line line_of(zval *given) {
         ZVAL_DEREF(given);
@@ -289,6 +317,24 @@ namespace {
         return excel::borders::all(edge_of(given));
     }
 
+    // An alignment given: another cell's Alignment, ['horizontal' => 'center', 'vertical' => 'top',
+    // 'wrap' => true, 'indent' => 1] (what's left out is the default), or null for the default.
+    excel::alignment alignment_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL) return {};
+        if (const auto *from = given_part(given, alignment_class)) return cell_now(*from).style.alignment;
+        if (Z_TYPE_P(given) != IS_ARRAY)
+            throw std::invalid_argument{"SC\\Excel: an alignment is an Alignment, ['horizontal' => ..., 'vertical' => ..., 'wrap' => ..., 'indent' => ...] or null"};
+        excel::alignment alignment;
+        each_key(given, {"horizontal", "vertical", "wrap", "indent"}, "an alignment", [&](const std::string_view key, zval *value) {
+            if (key == "horizontal") alignment.horizontal = horizontal_of(value);
+            else if (key == "vertical") alignment.vertical = vertical_of(value);
+            else if (key == "wrap") alignment.wrap = zend_is_true(value);
+            else alignment.indent = indent_of(value);
+        });
+        return alignment;
+    }
+
     // A font given: another cell's Font, ['size' => 14, 'color' => '#c00000', 'bold' => true,
     // 'italic' => true, 'underline' => 'single'] (what's left out is the default), or null for the
     // default font.
@@ -308,18 +354,31 @@ namespace {
         return font;
     }
 
+    // A number format: Excel's code ("#,##0.00", "0%", "yyyy-mm-dd"); "" or null for General.
+    std::string number_format_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL) return {};
+        if (Z_TYPE_P(given) != IS_STRING) throw std::invalid_argument{"SC\\Excel: a number format is Excel's code, \"#,##0.00\", or null"};
+        if (ZSTR_LEN(Z_STR_P(given)) > 255) throw std::invalid_argument{"SC\\Excel: a number format is at most 255 characters"};
+        return std::string{view(Z_STR_P(given))};
+    }
+
     // A style given: another cell's Style, ['font' => [...], 'background' => '#ddebf7', 'borders'
-    // => ...] (what's left out is the default), or null for the plain style.
+    // => ..., 'alignment' => [...], 'numberFormat' => '0.00'] (what's left out is the default), or
+    // null for the plain style.
     excel::style style_of(zval *given) {
         ZVAL_DEREF(given);
         if (Z_TYPE_P(given) == IS_NULL) return {};
         if (const auto *from = given_part(given, style_class)) return cell_now(*from).style;
-        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a style is a Style, an array ['font' => [...], 'background' => ..., 'borders' => ...] or null"};
+        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a style is a Style, an array ['font' => [...], 'background' => ..., 'borders' => ..., 'alignment' => [...], "
+                                                                                          "'numberFormat' => ...] or null"};
         excel::style style;
-        each_key(given, {"font", "background", "borders"}, "a style", [&](const std::string_view key, zval *value) {
+        each_key(given, {"font", "background", "borders", "alignment", "numberFormat"}, "a style", [&](const std::string_view key, zval *value) {
             if (key == "font") style.font = font_of(value);
             else if (key == "background") style.background = color_of(value);
-            else style.borders = borders_of(value);
+            else if (key == "borders") style.borders = borders_of(value);
+            else if (key == "alignment") style.alignment = alignment_of(value);
+            else style.number_format = number_format_of(value);
         });
         return style;
     }
@@ -782,8 +841,9 @@ namespace {
     };
 
     // ---- properties: Sheet's name and widths, Row's index, Cell's row, column, name, value, formula
-    // and style, Style's font, background and borders, Font's size, color, bold, italic and
-    // underline, Borders' left, right, top and bottom, Edge's line and color ----
+    // and style, Style's font, background, borders, alignment and numberFormat, Font's size, color,
+    // bold, italic and underline, Borders' left, right, top and bottom, Edge's line and color,
+    // Alignment's horizontal, vertical, wrap and indent ----
 
     // The property's value into out; false when the object has no such property.
     bool property(zend_object *object, const std::string_view name, zval *out) {
@@ -802,6 +862,20 @@ namespace {
             if (name == "font") make_part(out, font_class, self.owner, *self.sheet, self.row, self.column);
             else if (name == "background") zval_of(cell_now(self).style.background, out);
             else if (name == "borders") make_part(out, borders_class, self.owner, *self.sheet, self.row, self.column);
+            else if (name == "alignment") make_part(out, alignment_class, self.owner, *self.sheet, self.row, self.column);
+            else if (name == "numberFormat") {
+                const auto &code = cell_now(self).style.number_format;
+                ZVAL_STRINGL(out, code.data(), code.size());
+            } else return false;
+            return true;
+        }
+        if (object->ce == alignment_class) {
+            const auto &alignment = cell_now(self).style.alignment;
+            if (name == "horizontal" || name == "vertical") {
+                const auto text = name == "horizontal" ? excel::name(alignment.horizontal) : excel::name(alignment.vertical);
+                ZVAL_STRINGL(out, text.data(), text.size());
+            } else if (name == "wrap") ZVAL_BOOL(out, alignment.wrap);
+            else if (name == "indent") ZVAL_LONG(out, static_cast<zend_long>(alignment.indent));
             else return false;
             return true;
         }
@@ -856,14 +930,16 @@ namespace {
     std::span<const std::string_view> property_names(const zend_object *object) {
         static constexpr std::string_view sheet[] = {"name", "widths"}, row[] = {"index"},
                                           cell[] = {"row", "column", "name", "value", "formula", "style"},
-                                          style[] = {"font", "background", "borders"}, font[] = {"size", "color", "bold", "italic", "underline"},
-                                          edge[] = {"line", "color"};
+                                          style[] = {"font", "background", "borders", "alignment", "numberFormat"},
+                                          font[] = {"size", "color", "bold", "italic", "underline"}, edge[] = {"line", "color"},
+                                          alignment[] = {"horizontal", "vertical", "wrap", "indent"};
         if (object->ce == sheet_class) return sheet;
         if (object->ce == row_class) return row;
         if (object->ce == style_class) return style;
         if (object->ce == font_class) return font;
         if (object->ce == borders_class) return sides;
         if (object->ce == edge_class) return edge;
+        if (object->ce == alignment_class) return alignment;
         return cell;
     }
 
@@ -891,7 +967,9 @@ namespace {
                 if (name == "font") cell_to_change(self).style.font = font_of(value);
                 else if (name == "background") cell_to_change(self).style.background = color_of(value);
                 else if (name == "borders") cell_to_change(self).style.borders = borders_of(value);
-                else throw refuse(" (a style's font, background and borders can)");
+                else if (name == "alignment") cell_to_change(self).style.alignment = alignment_of(value);
+                else if (name == "numberFormat") cell_to_change(self).style.number_format = number_format_of(value);
+                else throw refuse(" (a style's font, background, borders, alignment and numberFormat can)");
             } else if (object->ce == font_class) {
                 if (name == "size") cell_to_change(self).style.font.size = size_of(value);
                 else if (name == "color") cell_to_change(self).style.font.color = color_of(value);
@@ -908,6 +986,13 @@ namespace {
                 if (name == "line") edge.line = line_of(value);
                 else if (name == "color") edge.color = color_of(value);
                 else throw refuse(" (an edge's line and color can)");
+            } else if (object->ce == alignment_class) {
+                auto &alignment = cell_to_change(self).style.alignment;
+                if (name == "horizontal") alignment.horizontal = horizontal_of(value);
+                else if (name == "vertical") alignment.vertical = vertical_of(value);
+                else if (name == "wrap") alignment.wrap = zend_is_true(value);
+                else if (name == "indent") alignment.indent = indent_of(value);
+                else throw refuse(" (an alignment's horizontal, vertical, wrap and indent can)");
             } else {
                 throw refuse("");
             }
@@ -968,7 +1053,9 @@ namespace {
         font_class = register_class("SC\\Excel\\Font", cell_methods, false);
         borders_class = register_class("SC\\Excel\\Borders", cell_methods, false);
         edge_class = register_class("SC\\Excel\\Edge", cell_methods, false);
-        for (auto *each: {sheet_class, row_class, cell_class, style_class, font_class, borders_class, edge_class}) each->create_object = create_part;
+        alignment_class = register_class("SC\\Excel\\Alignment", cell_methods, false);
+        for (auto *each: {sheet_class, row_class, cell_class, style_class, font_class, borders_class, edge_class, alignment_class})
+            each->create_object = create_part;
         std::memcpy(&part_handlers, zend_get_std_object_handlers(), sizeof(part_handlers));
         part_handlers.offset = XtOffsetOf(part_object, std);
         part_handlers.free_obj = free_part;
