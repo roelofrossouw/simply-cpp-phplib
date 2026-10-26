@@ -566,13 +566,15 @@ final class Style
     public ?string $background;
     /**
      * Its borders. Set them to another cell's, ['left' => ..., 'right' => ..., 'top' => ...,
-     * 'bottom' => ...] (each as an Edge takes; sides left out have none), one edge for all four
-     * sides ('thin', ['line' => 'thin', 'color' => '#1f4e79'], an Edge), or null for none.
+     * 'bottom' => ..., 'diagonalUp' => ..., 'diagonalDown' => ...] (each as an Edge takes; those left
+     * out have none), one edge for all four sides ('thin', ['line' => 'thin', 'color' => '#1f4e79'],
+     * an Edge; no diagonals), or null for none.
      */
     public Borders $borders;
     /**
      * Where its text sits. Set it to another cell's, ['horizontal' => 'center', 'vertical' =>
-     * 'top', 'wrap' => true, 'indent' => 1] (what's left out is the default) or null.
+     * 'top', 'wrap' => true, 'indent' => 1, 'rotation' => 45, 'stacked' => false] (what's left out
+     * is the default) or null.
      */
     public Alignment $alignment;
     /**
@@ -618,6 +620,15 @@ final class Alignment
      * @throws Exception For anything else.
      */
     public int $indent;
+    /**
+     * Degrees counter-clockwise, from -90 (reading downwards) to 90 (upwards), as Excel's
+     * Orientation shows them.
+     *
+     * @throws Exception For anything else.
+     */
+    public int $rotation;
+    /** Letters stacked one under another (Excel's Vertical Text); rotation then counts for nothing. */
+    public bool $stacked;
 
     private function __construct()
     {
@@ -634,6 +645,12 @@ final class Borders
     public Edge $right;
     public Edge $top;
     public Edge $bottom;
+    /**
+     * The diagonals: up from bottom left to top right, down from top left to bottom right. Excel
+     * draws both alike, so when both are set they must be the same edge (saving throws otherwise).
+     */
+    public Edge $diagonalUp;
+    public Edge $diagonalDown;
 
     private function __construct()
     {

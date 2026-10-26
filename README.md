@@ -63,9 +63,9 @@ sc-office's C++ classes: sheets are found by name ignoring case, cells by name (
 `[row, column]` from 0, a row's cells by column number or letters (`$row['B']`). A `Cell` has
 `row`, `column`, `name`, `value` (numbers are floats; dates are numbers, days since 1899-12-30) and
 `formula` (`"=C6"`) and `style`: a `Style` with a `font` (`size` in points, `color`, `bold`,
-`italic`, `strike`, `underline`), a `background` and `borders` (`left`, `right`, `top`, `bottom`, each an
+`italic`, `strike`, `underline`), a `background` and `borders` (`left`, `right`, `top`, `bottom`, `diagonalUp`, `diagonalDown`, each an
 `Edge` with a `line` such as `"thin"` or `"double"` and a `color`), an `alignment` (`horizontal`,
-`vertical`, `wrap`, `indent`) and a `numberFormat` (Excel's code: `"#,##0.00"`, `"0%"`,
+`vertical`, `wrap`, `indent`, `rotation`, `stacked`) and a `numberFormat` (Excel's code: `"#,##0.00"`, `"0%"`,
 `"yyyy-mm-dd"`), colours as `"#rrggbb"` (set as any CSS colour). `$sheet->height(0, 24)` sets a
 row's height in points, `$sheet->merge('A1:D1')` merges cells (`unmerge()`, `$sheet->merged`),
 `$sheet->hiddenColumn('E', true)` and `$sheet->hiddenRow(9, true)` hide a column and a row,

@@ -70,11 +70,11 @@ namespace {
         zend_object std;
     };
 
-    // The sides of a cell's borders, in the order an Edge's side counts them.
-    constexpr std::string_view sides[] = {"left", "right", "top", "bottom"};
+    // The sides of a cell's borders, and its diagonals, in the order an Edge's side counts them.
+    constexpr std::string_view sides[] = {"left", "right", "top", "bottom", "diagonalUp", "diagonalDown"};
 
-    excel::edge excel::borders::*const side_members[] = {&excel::borders::left, &excel::borders::right, &excel::borders::top,
-                                                         &excel::borders::bottom};
+    excel::edge excel::borders::*const side_members[] = {&excel::borders::left,   &excel::borders::right,       &excel::borders::top,
+                                                         &excel::borders::bottom, &excel::borders::diagonal_up, &excel::borders::diagonal_down};
 
     workbook_object *workbook_of(zend_object *object) {
         return reinterpret_cast<workbook_object *>(reinterpret_cast<char *>(object) - XtOffsetOf(workbook_object, std));
@@ -275,6 +275,14 @@ namespace {
         return static_cast<unsigned>(Z_LVAL_P(given));
     }
 
+    // A text rotation, in whole degrees from -90 to 90.
+    int rotation_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) != IS_LONG || Z_LVAL_P(given) < -90 || Z_LVAL_P(given) > 90)
+            throw std::out_of_range{"SC\\Excel: a rotation is a whole number of degrees from -90 to 90"};
+        return static_cast<int>(Z_LVAL_P(given));
+    }
+
     // A border's line given: Excel's name ("thin", "double", "mediumDashDot" ...), or null for none.
     excel::line line_of(zval *given) {
         ZVAL_DEREF(given);
@@ -299,8 +307,8 @@ namespace {
     }
 
     // Borders given: another cell's Borders, ['left' => ..., 'right' => ..., 'top' => ..., 'bottom'
-    // => ...] (sides left out have none), one side for all four (an Edge, a line, ['line' => ...,
-    // 'color' => ...]), or null for none.
+    // => ..., 'diagonalUp' => ..., 'diagonalDown' => ...] (those left out have none), one side for
+    // all four (an Edge, a line, ['line' => ..., 'color' => ...]; no diagonals), or null for none.
     excel::borders borders_of(zval *given) {
         ZVAL_DEREF(given);
         if (const auto *from = given_part(given, borders_class)) return cell_now(*from).style.borders;
@@ -312,7 +320,7 @@ namespace {
             } ZEND_HASH_FOREACH_END();
             if (by_side) {
                 excel::borders borders;
-                each_key(given, {"left", "right", "top", "bottom"}, "borders", [&](const std::string_view key, zval *value) {
+                each_key(given, {"left", "right", "top", "bottom", "diagonalUp", "diagonalDown"}, "borders", [&](const std::string_view key, zval *value) {
                     borders.*side_members[std::ranges::find(sides, key) - std::begin(sides)] = edge_of(value);
                 });
                 return borders;
@@ -322,19 +330,23 @@ namespace {
     }
 
     // An alignment given: another cell's Alignment, ['horizontal' => 'center', 'vertical' => 'top',
-    // 'wrap' => true, 'indent' => 1] (what's left out is the default), or null for the default.
+    // 'wrap' => true, 'indent' => 1, 'rotation' => 45, 'stacked' => false] (what's left out is the
+    // default), or null for the default.
     excel::alignment alignment_of(zval *given) {
         ZVAL_DEREF(given);
         if (Z_TYPE_P(given) == IS_NULL) return {};
         if (const auto *from = given_part(given, alignment_class)) return cell_now(*from).style.alignment;
         if (Z_TYPE_P(given) != IS_ARRAY)
-            throw std::invalid_argument{"SC\\Excel: an alignment is an Alignment, ['horizontal' => ..., 'vertical' => ..., 'wrap' => ..., 'indent' => ...] or null"};
+            throw std::invalid_argument{"SC\\Excel: an alignment is an Alignment, ['horizontal' => ..., 'vertical' => ..., 'wrap' => ..., 'indent' => ..., "
+                                        "'rotation' => ..., 'stacked' => ...] or null"};
         excel::alignment alignment;
-        each_key(given, {"horizontal", "vertical", "wrap", "indent"}, "an alignment", [&](const std::string_view key, zval *value) {
+        each_key(given, {"horizontal", "vertical", "wrap", "indent", "rotation", "stacked"}, "an alignment", [&](const std::string_view key, zval *value) {
             if (key == "horizontal") alignment.horizontal = horizontal_of(value);
             else if (key == "vertical") alignment.vertical = vertical_of(value);
             else if (key == "wrap") alignment.wrap = zend_is_true(value);
-            else alignment.indent = indent_of(value);
+            else if (key == "indent") alignment.indent = indent_of(value);
+            else if (key == "rotation") alignment.rotation = rotation_of(value);
+            else alignment.stacked = zend_is_true(value);
         });
         return alignment;
     }
@@ -1000,8 +1012,9 @@ namespace {
     // ---- properties: Sheet's name, widths, heights, merged, hiddenColumns, hiddenRows and frozen,
     // Row's index, Cell's row, column, name, value, formula
     // and style, Style's font, background, borders, alignment and numberFormat, Font's size, color,
-    // bold, italic, strike and underline, Borders' left, right, top and bottom, Edge's line and color,
-    // Alignment's horizontal, vertical, wrap and indent ----
+    // bold, italic, strike and underline, Borders' left, right, top, bottom, diagonalUp and
+    // diagonalDown, Edge's line and color, Alignment's horizontal, vertical, wrap, indent, rotation
+    // and stacked ----
 
     // The property's value into out; false when the object has no such property.
     bool property(zend_object *object, const std::string_view name, zval *out) {
@@ -1052,6 +1065,8 @@ namespace {
                 ZVAL_STRINGL(out, text.data(), text.size());
             } else if (name == "wrap") ZVAL_BOOL(out, alignment.wrap);
             else if (name == "indent") ZVAL_LONG(out, static_cast<zend_long>(alignment.indent));
+            else if (name == "rotation") ZVAL_LONG(out, alignment.rotation);
+            else if (name == "stacked") ZVAL_BOOL(out, alignment.stacked);
             else return false;
             return true;
         }
@@ -1109,7 +1124,7 @@ namespace {
                                           cell[] = {"row", "column", "name", "value", "formula", "style"},
                                           style[] = {"font", "background", "borders", "alignment", "numberFormat"},
                                           font[] = {"size", "color", "bold", "italic", "strike", "underline"}, edge[] = {"line", "color"},
-                                          alignment[] = {"horizontal", "vertical", "wrap", "indent"};
+                                          alignment[] = {"horizontal", "vertical", "wrap", "indent", "rotation", "stacked"};
         if (object->ce == sheet_class) return sheet;
         if (object->ce == row_class) return row;
         if (object->ce == style_class) return style;
@@ -1157,7 +1172,7 @@ namespace {
                 else throw refuse(" (a font's size, color, bold, italic, strike and underline can)");
             } else if (object->ce == borders_class) {
                 const auto side = std::ranges::find(sides, name);
-                if (side == std::end(sides)) throw refuse(" (borders' left, right, top and bottom can)");
+                if (side == std::end(sides)) throw refuse(" (borders' left, right, top, bottom, diagonalUp and diagonalDown can)");
                 cell_to_change(self).style.borders.*side_members[side - std::begin(sides)] = edge_of(value);
             } else if (object->ce == edge_class) {
                 auto &edge = cell_to_change(self).style.borders.*side_members[self.side];
@@ -1170,7 +1185,9 @@ namespace {
                 else if (name == "vertical") alignment.vertical = vertical_of(value);
                 else if (name == "wrap") alignment.wrap = zend_is_true(value);
                 else if (name == "indent") alignment.indent = indent_of(value);
-                else throw refuse(" (an alignment's horizontal, vertical, wrap and indent can)");
+                else if (name == "rotation") alignment.rotation = rotation_of(value);
+                else if (name == "stacked") alignment.stacked = zend_is_true(value);
+                else throw refuse(" (an alignment's horizontal, vertical, wrap, indent, rotation and stacked can)");
             } else {
                 throw refuse("");
             }

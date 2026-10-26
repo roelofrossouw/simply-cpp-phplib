@@ -90,8 +90,10 @@ check(!isset($sheet['E1']), 'unset() removes a cell');
 check(json_decode(json_encode($sheet['B2']), true) === ['row' => 1, 'column' => 1, 'name' => 'B2', 'value' => 18.5, 'formula' => '',
       'style' => ['font' => ['size' => null, 'color' => null, 'bold' => false, 'italic' => false, 'strike' => false, 'underline' => null], 'background' => null,
                   'borders' => ['left' => ['line' => null, 'color' => null], 'right' => ['line' => null, 'color' => null],
-                                'top' => ['line' => null, 'color' => null], 'bottom' => ['line' => null, 'color' => null]],
-                  'alignment' => ['horizontal' => 'general', 'vertical' => 'bottom', 'wrap' => false, 'indent' => 0], 'numberFormat' => '']],
+                                'top' => ['line' => null, 'color' => null], 'bottom' => ['line' => null, 'color' => null],
+                                'diagonalUp' => ['line' => null, 'color' => null], 'diagonalDown' => ['line' => null, 'color' => null]],
+                  'alignment' => ['horizontal' => 'general', 'vertical' => 'bottom', 'wrap' => false, 'indent' => 0, 'rotation' => 0, 'stacked' => false],
+                  'numberFormat' => '']],
       'json_encode() shows a cell');
 
 // Styles: a part at a time, as an array, or another cell's; column widths.
@@ -176,6 +178,23 @@ check(throws(function () use ($s) { $s['A3']->style->alignment->indent = 251; })
 check(throws(function () use ($s) { $s['A3']->style->alignment = ['rotate' => 90]; }), 'a key alignments lack throws');
 check(throws(function () use ($s) { $s['A3']->style->numberFormat = str_repeat('0', 256); }), 'a number format beyond 255 characters throws');
 
+// Text rotation and diagonal borders.
+$s['D3'] = 'Turned';
+$s['D3']->style->alignment->rotation = -45;
+check($s['D3']->style->alignment->rotation === -45 && !$s['D3']->style->alignment->stacked, 'rotation in degrees');
+$s['D4'] = 'Stacked';
+$s['D4']->style->alignment = ['stacked' => true];
+check($s['D4']->style->alignment->stacked, 'stacked');
+check(throws(function () use ($s) { $s['D3']->style->alignment->rotation = 91; }), 'a rotation beyond 90 throws');
+check(throws(function () use ($s) { $s['D3']->style->alignment->rotation = 4.5; }), 'a rotation in part degrees throws');
+$s['D5']->style->borders->diagonalUp = ['line' => 'thin', 'color' => 'red'];
+$s['D5']->style->borders->diagonalDown = $s['D5']->style->borders->diagonalUp;
+check($s['D5']->style->borders->diagonalDown->line === 'thin' && $s['D5']->style->borders->diagonalDown->color === '#ff0000', "a diagonal from another cell's edge");
+$s['D6']->style->borders = ['bottom' => 'thin', 'diagonalDown' => 'dashed'];
+check($s['D6']->style->borders->diagonalDown->line === 'dashed' && $s['D6']->style->borders->diagonalUp->line === null, 'diagonals by name in an array');
+$s['D7']->style->borders = 'thin';
+check($s['D7']->style->borders->diagonalUp->line === null, "a line for all four sides draws no diagonals");
+
 // Merged cells and row heights.
 $s['A6'] = 'Merged across three';
 $s->merge('A6:C6');
@@ -246,6 +265,8 @@ check($t['E1']->style->borders->bottom->line === 'double' && $t['E1']->style->bo
 check(isset($t['F1']) && $t['F1']->style->borders->top->line === 'thin', 'a cell with only borders read back');
 check($t['A3']->style->numberFormat === '#,##0.00' && $t['B3']->style->numberFormat === '0.0%', 'number formats read back');
 check($t['B3']->style->alignment->horizontal === 'center' && $t['B3']->style->alignment->indent === 2, 'alignment read back');
+check($t['D3']->style->alignment->rotation === -45 && $t['D4']->style->alignment->stacked, 'rotation and stacked read back');
+check($t['D5']->style->borders->diagonalUp->line === 'thin' && $t['D5']->style->borders->diagonalDown->color === '#ff0000', 'diagonals read back');
 check($t->merged === ['A6:C6'] && $t->heights === [5 => 30.0, 11 => 12.5], 'merges and heights read back');
 check($t->hiddenColumns === [4, 5] && $t->hiddenRows === [1, 13] && $t->frozen === 'A2', 'hidden columns and rows, frozen panes read back');
 check($t['E1']->style->font->strike, 'strike read back');
