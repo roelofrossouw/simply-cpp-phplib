@@ -195,8 +195,9 @@ use SC\Exception;
  * An Excel workbook (.xlsx): its sheets in order, each holding the rows that have cells, each row
  * the cells that are set, with their values and formulas. Works like an array of sheets, found by
  * name ignoring case, as Excel does. Sheets, rows, cells and their styles are views into it (they
- * keep it alive): changing one changes the workbook. Cells have a style (font size, colour and
- * bold; a background) and columns a width; no other formatting, merged cells or pictures.
+ * keep it alive): changing one changes the workbook. Cells have a style (font size, colour, bold,
+ * italic and underline; a background; borders) and columns a width; no other formatting, merged
+ * cells or pictures.
  *
  *     $book = Workbook::open('prices.xlsx');
  *     foreach ($book as $sheet)
@@ -208,6 +209,7 @@ use SC\Exception;
  *     $out['Prices']['B3']->formula = '=B2*2';
  *     $out['Prices']['A1']->style->font->bold = true;
  *     $out['Prices']['A1']->style->background = '#ddebf7';
+ *     $out['Prices']['A1']->style->borders->bottom = 'double';
  *     $out['Prices']->width('A', 20);         // characters
  *     $out->save('out.xlsx');
  *
@@ -440,8 +442,9 @@ final class Cell
     public string $formula;
     /**
      * How it looks. Set it to another cell's style, an array ['font' => ['size' => 14, 'color' =>
-     * '#1f4e79', 'bold' => true], 'background' => '#ddebf7'] (what's left out is the default), or
-     * null for the plain style; or change it a part at a time: $cell->style->font->bold = true.
+     * '#1f4e79', 'bold' => true], 'background' => '#ddebf7', 'borders' => 'thin'] (what's left out
+     * is the default), or null for the plain style; or change it a part at a time:
+     * $cell->style->font->bold = true.
      */
     public Style $style;
 
@@ -455,7 +458,10 @@ final class Cell
  */
 final class Style
 {
-    /** The font. Set it to another cell's font, an array ['size' => ..., 'color' => ..., 'bold' => ...] or null. */
+    /**
+     * The font. Set it to another cell's font, an array ['size' => ..., 'color' => ..., 'bold' =>
+     * ..., 'italic' => ..., 'underline' => ...] or null.
+     */
     public Font $font;
     /**
      * A solid background: "#rrggbb" (any CSS colour when set: "#ddebf7", "#ff0", "yellow",
@@ -464,6 +470,53 @@ final class Style
      * @throws Exception For text that isn't a colour.
      */
     public ?string $background;
+    /**
+     * Its borders. Set them to another cell's, ['left' => ..., 'right' => ..., 'top' => ...,
+     * 'bottom' => ...] (each as an Edge takes; sides left out have none), one edge for all four
+     * sides ('thin', ['line' => 'thin', 'color' => '#1f4e79'], an Edge), or null for none.
+     */
+    public Borders $borders;
+
+    private function __construct()
+    {
+    }
+}
+
+/**
+ * A cell's borders, a view into it: each side an Edge.
+ */
+final class Borders
+{
+    /** Set a side to another cell's Edge, ['line' => 'thin', 'color' => '#1f4e79'], a line or null. */
+    public Edge $left;
+    public Edge $right;
+    public Edge $top;
+    public Edge $bottom;
+
+    private function __construct()
+    {
+    }
+}
+
+/**
+ * One side's border, a view into its cell.
+ */
+final class Edge
+{
+    /**
+     * Excel's name for its line: "thin", "medium", "thick", "hair", "dotted", "dashed", "double",
+     * "dashDot", "dashDotDot", "slantDashDot", "mediumDashed", "mediumDashDot",
+     * "mediumDashDotDot"; null for none.
+     *
+     * @throws Exception For a name Excel doesn't have.
+     */
+    public ?string $line;
+    /**
+     * "#rrggbb" (any CSS colour when set), null for automatic (black).
+     *
+     * @throws Exception For text that isn't a colour.
+     */
+    public ?string $color;
 
     private function __construct()
     {
@@ -489,6 +542,14 @@ final class Font
      */
     public ?string $color;
     public bool $bold;
+    public bool $italic;
+    /**
+     * "single", "double", "singleAccounting" or "doubleAccounting" (the accounting ones run the
+     * cell's width); null for none. Set true for "single", false for none.
+     *
+     * @throws Exception For a name Excel doesn't have.
+     */
+    public ?string $underline;
 
     private function __construct()
     {

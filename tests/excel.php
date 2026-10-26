@@ -88,7 +88,9 @@ check($back['Prices']['E1']->formula === '=SUM(B2:B3)', 'a cell assigned copies 
 unset($sheet['E1']);
 check(!isset($sheet['E1']), 'unset() removes a cell');
 check(json_decode(json_encode($sheet['B2']), true) === ['row' => 1, 'column' => 1, 'name' => 'B2', 'value' => 18.5, 'formula' => '',
-      'style' => ['font' => ['size' => null, 'color' => null, 'bold' => false], 'background' => null]],
+      'style' => ['font' => ['size' => null, 'color' => null, 'bold' => false, 'italic' => false, 'underline' => null], 'background' => null,
+                  'borders' => ['left' => ['line' => null, 'color' => null], 'right' => ['line' => null, 'color' => null],
+                                'top' => ['line' => null, 'color' => null], 'bottom' => ['line' => null, 'color' => null]]]],
       'json_encode() shows a cell');
 
 // Styles: a part at a time, as an array, or another cell's; column widths.
@@ -124,7 +126,36 @@ check(throws(function () use ($s) { $s['A1']->style->font->size = 500; }), 'a fo
 check(throws(function () use ($s) { $s['A1']->style->font->color = 'reddish'; }), "text that isn't a colour throws");
 check(throws(function () use ($s) { $s['A1']->style = ['colour' => 'red']; }), 'a key a style lacks throws');
 check(throws(function () use ($s) { $s['A1']->style = 'bold'; }), 'a style that is text throws');
-check(throws(function () use ($s) { $s['A1']->style->font->italic = true; }), 'a property fonts lack throws');
+check(throws(function () use ($s) { $s['A1']->style->font->strike = true; }), 'a property fonts lack throws');
+// Italic, underline and borders.
+$s['E1'] = 'Ruled';
+$s['E1']->style->font->italic = true;
+$s['E1']->style->font->underline = true;
+check($s['E1']->style->font->italic && $s['E1']->style->font->underline === 'single', 'italic; true underlines once');
+$s['E1']->style->font->underline = 'doubleAccounting';
+check($s['E1']->style->font->underline === 'doubleAccounting', "underlines by Excel's names");
+$s['E1']->style->borders = 'thin';
+check($s['E1']->style->borders->left->line === 'thin' && $s['E1']->style->borders->bottom->line === 'thin', 'a line for all four sides');
+check($s['E1']->style->borders->top->color === null, '... in the automatic colour');
+$s['E1']->style->borders->bottom = ['line' => 'double', 'color' => '#1F4E79'];
+$s['E1']->style->borders->top->color = 'red';
+check($s['E1']->style->borders->bottom->line === 'double' && $s['E1']->style->borders->bottom->color === '#1f4e79', 'a side as an array');
+check($s['E1']->style->borders->top->line === 'thin' && $s['E1']->style->borders->top->color === '#ff0000', "an edge's colour alone");
+$s['F1']->style->borders = ['top' => 'thin', 'bottom' => $s['E1']->style->borders->bottom];
+check($s['F1']->style->borders->left->line === null && $s['F1']->style->borders->bottom->color === '#1f4e79', 'borders by side, the rest none');
+$s['G1']->style->borders = $s['E1']->style->borders;
+check($s['G1']->style->borders->top->color === '#ff0000', "another cell's borders");
+$s['G1']->style->borders = ['line' => 'medium', 'color' => 'blue'];
+check($s['G1']->style->borders->right->line === 'medium' && $s['G1']->style->borders->right->color === '#0000ff', 'one edge as an array for all four');
+$s['G1']->style->borders = null;
+check($s['G1']->style->borders->right->line === null, 'null: no borders');
+$s['H1']->style = ['font' => ['italic' => true, 'underline' => 'double'], 'borders' => ['bottom' => 'thick']];
+check($s['H1']->style->font->underline === 'double' && $s['H1']->style->borders->bottom->line === 'thick', 'italic, underline and borders in a style array');
+check(throws(function () use ($s) { $s['E1']->style->borders->left = 'Thin'; }), "a line Excel doesn't name so throws");
+check(throws(function () use ($s) { $s['E1']->style->font->underline = 'wavy'; }), "an underline Excel doesn't have throws");
+check(throws(function () use ($s) { $s['E1']->style->borders = ['left' => 'thin', 'diagonal' => 'thin']; }), 'a side borders lack throws');
+check(throws(function () use ($s) { $s['E1']->style->borders->left->width = 2; }), 'a property edges lack throws');
+
 check($s->width('A') === null, 'a column without a width: null');
 check($s->width('A', 30) === 30.0 && $s->width(0) === 30.0, 'width() sets and reads, by letters or number');
 $s->width('B', 12.5);
@@ -142,6 +173,10 @@ check($t['A1']->style->background === '#ffff00' && $t['B1']->style->background =
 check(isset($t['B1']), 'a cell with a style and no value read back');
 check($t['A2']->style->font->bold && $t['A2']->value === 6.0, 'value and style read back');
 check($t->widths === [0 => 30.0, 1 => 12.5, 2 => 12.5], 'widths read back');
+check($t['E1']->style->font->italic && $t['E1']->style->font->underline === 'doubleAccounting', 'italic and underline read back');
+check($t['E1']->style->borders->bottom->line === 'double' && $t['E1']->style->borders->bottom->color === '#1f4e79'
+      && $t['E1']->style->borders->top->color === '#ff0000' && $t['E1']->style->borders->left->line === 'thin', 'borders read back');
+check(isset($t['F1']) && $t['F1']->style->borders->top->line === 'thin', 'a cell with only borders read back');
 
 // Mistakes.
 check(throws(fn() => Workbook::open("$dir/missing.xlsx")), 'a missing file throws');

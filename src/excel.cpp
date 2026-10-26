@@ -14,10 +14,11 @@
 //     $out['Prices']['B3']->formula = '=B2*2';
 //     $out['Prices']['A1']->style->font->bold = true;
 //     $out['Prices']['A1']->style->background = '#ddebf7';
+//     $out['Prices']['A1']->style->borders->bottom = 'double';
 //     $out['Prices']->width('A', 20);         // characters
 //     $out->save('out.xlsx');                 // or $out->output(), the file as a string
 //
-// A Sheet, Row, Cell, Style or Font is a view into its workbook (which it keeps alive), not a
+// A Sheet, Row, Cell, Style, Font, Borders or Edge is a view into its workbook (which it keeps alive), not a
 // copy: changing it changes the workbook. Every failure is an SC\Exception.
 
 #include "php_glue.h"
@@ -41,7 +42,7 @@ namespace {
     using sc::php::view;
 
     zend_class_entry *workbook_class = nullptr, *sheet_class = nullptr, *row_class = nullptr, *cell_class = nullptr, *style_class = nullptr,
-                     *font_class = nullptr;
+                     *font_class = nullptr, *borders_class = nullptr, *edge_class = nullptr;
     zend_object_handlers workbook_handlers, part_handlers;
 
     // ---- the objects ----
@@ -51,15 +52,23 @@ namespace {
         zend_object std;
     };
 
-    // A Sheet, Row, Cell, or a cell's Style or Font: its workbook's object (kept alive while this one
-    // lives), the sheet, and the row and column it stands for (as far as it has them).
+    // A Sheet, Row, Cell, or a cell's Style, Font, Borders or Edge: its workbook's object (kept alive
+    // while this one lives), the sheet, the row and column it stands for (as far as it has them), and
+    // an Edge's side.
     struct part_object {
         zend_object *owner;
         excel::sheet *sheet;
         std::size_t row;
         std::size_t column;
+        std::size_t side;
         zend_object std;
     };
+
+    // The sides of a cell's borders, in the order an Edge's side counts them.
+    constexpr std::string_view sides[] = {"left", "right", "top", "bottom"};
+
+    excel::edge excel::borders::*const side_members[] = {&excel::borders::left, &excel::borders::right, &excel::borders::top,
+                                                         &excel::borders::bottom};
 
     workbook_object *workbook_of(zend_object *object) {
         return reinterpret_cast<workbook_object *>(reinterpret_cast<char *>(object) - XtOffsetOf(workbook_object, std));
@@ -95,7 +104,7 @@ namespace {
         auto *self = static_cast<part_object *>(zend_object_alloc(sizeof(part_object), type));
         self->owner = nullptr;
         self->sheet = nullptr;
-        self->row = self->column = 0;
+        self->row = self->column = self->side = 0;
         zend_object_std_init(&self->std, type);
         object_properties_init(&self->std, type);
         self->std.handlers = &part_handlers;
@@ -109,7 +118,7 @@ namespace {
 
     // A Sheet, Row or Cell of the workbook in owner, into out.
     void make_part(zval *out, zend_class_entry *type, zend_object *owner, excel::sheet &sheet, const std::size_t row = 0,
-                   const std::size_t column = 0) {
+                   const std::size_t column = 0, const std::size_t side = 0) {
         object_init_ex(out, type);
         auto *self = part_of(Z_OBJ_P(out));
         GC_ADDREF(owner);
@@ -117,6 +126,7 @@ namespace {
         self->sheet = &sheet;
         self->row = row;
         self->column = column;
+        self->side = side;
     }
 
     part_object &part(zval *self) {
@@ -212,33 +222,104 @@ namespace {
         } ZEND_HASH_FOREACH_END();
     }
 
-    // A font given: another cell's Font, ['size' => 14, 'color' => '#c00000', 'bold' => true]
-    // (what's left out is the default), or null for the default font.
+    // Excel's name for an underline or a border's line; null for none.
+    template<typename Kind>
+    void zval_of_kind(const Kind kind, zval *out) {
+        if (kind == Kind::none) {
+            ZVAL_NULL(out);
+            return;
+        }
+        const auto name = excel::name(kind);
+        ZVAL_STRINGL(out, name.data(), name.size());
+    }
+
+    // An underline given: Excel's name ("single", "double", "singleAccounting", "doubleAccounting"),
+    // true for single, false or null for none.
+    excel::underline underline_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL || Z_TYPE_P(given) == IS_FALSE) return excel::underline::none;
+        if (Z_TYPE_P(given) == IS_TRUE) return excel::underline::single;
+        if (Z_TYPE_P(given) != IS_STRING) throw std::invalid_argument{"SC\\Excel: an underline is \"single\", \"double\" ..., true, false or null"};
+        return excel::underline_named(view(Z_STR_P(given)));
+    }
+
+    // A border's line given: Excel's name ("thin", "double", "mediumDashDot" ...), or null for none.
+    excel::line line_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL) return excel::line::none;
+        if (Z_TYPE_P(given) != IS_STRING) throw std::invalid_argument{"SC\\Excel: a border's line is \"thin\", \"double\" ... or null"};
+        return excel::line_named(view(Z_STR_P(given)));
+    }
+
+    // A border's side given: another cell's Edge, ['line' => 'thin', 'color' => '#1f4e79'], a line
+    // ("thin": automatic colour), or null for none.
+    excel::edge edge_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL || Z_TYPE_P(given) == IS_STRING) return {line_of(given)};
+        if (const auto *from = given_part(given, edge_class)) return cell_now(*from).style.borders.*side_members[from->side];
+        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a border's side is an Edge, ['line' => ..., 'color' => ...], a line or null"};
+        excel::edge edge;
+        each_key(given, {"line", "color"}, "a border's side", [&](const std::string_view key, zval *value) {
+            if (key == "line") edge.line = line_of(value);
+            else edge.color = color_of(value);
+        });
+        return edge;
+    }
+
+    // Borders given: another cell's Borders, ['left' => ..., 'right' => ..., 'top' => ..., 'bottom'
+    // => ...] (sides left out have none), one side for all four (an Edge, a line, ['line' => ...,
+    // 'color' => ...]), or null for none.
+    excel::borders borders_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (const auto *from = given_part(given, borders_class)) return cell_now(*from).style.borders;
+        if (Z_TYPE_P(given) == IS_ARRAY) {
+            bool by_side = false;
+            zend_string *key = nullptr;
+            ZEND_HASH_FOREACH_STR_KEY(Z_ARRVAL_P(given), key) {
+                by_side = by_side || (key && std::ranges::find(sides, view(key)) != std::end(sides));
+            } ZEND_HASH_FOREACH_END();
+            if (by_side) {
+                excel::borders borders;
+                each_key(given, {"left", "right", "top", "bottom"}, "borders", [&](const std::string_view key, zval *value) {
+                    borders.*side_members[std::ranges::find(sides, key) - std::begin(sides)] = edge_of(value);
+                });
+                return borders;
+            }
+        }
+        return excel::borders::all(edge_of(given));
+    }
+
+    // A font given: another cell's Font, ['size' => 14, 'color' => '#c00000', 'bold' => true,
+    // 'italic' => true, 'underline' => 'single'] (what's left out is the default), or null for the
+    // default font.
     excel::font font_of(zval *given) {
         ZVAL_DEREF(given);
         if (Z_TYPE_P(given) == IS_NULL) return {};
         if (const auto *from = given_part(given, font_class)) return cell_now(*from).style.font;
-        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a font is a Font, an array ['size' => ..., 'color' => ..., 'bold' => ...] or null"};
+        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a font is a Font, an array ['size' => ..., 'color' => ..., 'bold' => ..., 'italic' => ..., 'underline' => ...] or null"};
         excel::font font;
-        each_key(given, {"size", "color", "bold"}, "a font", [&](const std::string_view key, zval *value) {
+        each_key(given, {"size", "color", "bold", "italic", "underline"}, "a font", [&](const std::string_view key, zval *value) {
             if (key == "size") font.size = size_of(value);
             else if (key == "color") font.color = color_of(value);
-            else font.bold = zend_is_true(value);
+            else if (key == "bold") font.bold = zend_is_true(value);
+            else if (key == "italic") font.italic = zend_is_true(value);
+            else font.underline = underline_of(value);
         });
         return font;
     }
 
-    // A style given: another cell's Style, ['font' => [...], 'background' => '#ddebf7'] (what's
-    // left out is the default), or null for the plain style.
+    // A style given: another cell's Style, ['font' => [...], 'background' => '#ddebf7', 'borders'
+    // => ...] (what's left out is the default), or null for the plain style.
     excel::style style_of(zval *given) {
         ZVAL_DEREF(given);
         if (Z_TYPE_P(given) == IS_NULL) return {};
         if (const auto *from = given_part(given, style_class)) return cell_now(*from).style;
-        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a style is a Style, an array ['font' => [...], 'background' => ...] or null"};
+        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a style is a Style, an array ['font' => [...], 'background' => ..., 'borders' => ...] or null"};
         excel::style style;
-        each_key(given, {"font", "background"}, "a style", [&](const std::string_view key, zval *value) {
+        each_key(given, {"font", "background", "borders"}, "a style", [&](const std::string_view key, zval *value) {
             if (key == "font") style.font = font_of(value);
-            else style.background = color_of(value);
+            else if (key == "background") style.background = color_of(value);
+            else style.borders = borders_of(value);
         });
         return style;
     }
@@ -701,7 +782,8 @@ namespace {
     };
 
     // ---- properties: Sheet's name and widths, Row's index, Cell's row, column, name, value, formula
-    // and style, Style's font and background, Font's size, color and bold ----
+    // and style, Style's font, background and borders, Font's size, color, bold, italic and
+    // underline, Borders' left, right, top and bottom, Edge's line and color ----
 
     // The property's value into out; false when the object has no such property.
     bool property(zend_object *object, const std::string_view name, zval *out) {
@@ -719,6 +801,20 @@ namespace {
         if (object->ce == style_class) {
             if (name == "font") make_part(out, font_class, self.owner, *self.sheet, self.row, self.column);
             else if (name == "background") zval_of(cell_now(self).style.background, out);
+            else if (name == "borders") make_part(out, borders_class, self.owner, *self.sheet, self.row, self.column);
+            else return false;
+            return true;
+        }
+        if (object->ce == borders_class) {
+            const auto side = std::ranges::find(sides, name);
+            if (side == std::end(sides)) return false;
+            make_part(out, edge_class, self.owner, *self.sheet, self.row, self.column, static_cast<std::size_t>(side - std::begin(sides)));
+            return true;
+        }
+        if (object->ce == edge_class) {
+            const auto &edge = cell_now(self).style.borders.*side_members[self.side];
+            if (name == "line") zval_of_kind(edge.line, out);
+            else if (name == "color") zval_of(edge.color, out);
             else return false;
             return true;
         }
@@ -729,6 +825,8 @@ namespace {
                 else ZVAL_NULL(out);
             } else if (name == "color") zval_of(font.color, out);
             else if (name == "bold") ZVAL_BOOL(out, font.bold);
+            else if (name == "italic") ZVAL_BOOL(out, font.italic);
+            else if (name == "underline") zval_of_kind(font.underline, out);
             else return false;
             return true;
         }
@@ -757,12 +855,15 @@ namespace {
 
     std::span<const std::string_view> property_names(const zend_object *object) {
         static constexpr std::string_view sheet[] = {"name", "widths"}, row[] = {"index"},
-                                          cell[] = {"row", "column", "name", "value", "formula", "style"}, style[] = {"font", "background"},
-                                          font[] = {"size", "color", "bold"};
+                                          cell[] = {"row", "column", "name", "value", "formula", "style"},
+                                          style[] = {"font", "background", "borders"}, font[] = {"size", "color", "bold", "italic", "underline"},
+                                          edge[] = {"line", "color"};
         if (object->ce == sheet_class) return sheet;
         if (object->ce == row_class) return row;
         if (object->ce == style_class) return style;
         if (object->ce == font_class) return font;
+        if (object->ce == borders_class) return sides;
+        if (object->ce == edge_class) return edge;
         return cell;
     }
 
@@ -789,12 +890,24 @@ namespace {
             } else if (object->ce == style_class) {
                 if (name == "font") cell_to_change(self).style.font = font_of(value);
                 else if (name == "background") cell_to_change(self).style.background = color_of(value);
-                else throw refuse(" (a style's font and background can)");
+                else if (name == "borders") cell_to_change(self).style.borders = borders_of(value);
+                else throw refuse(" (a style's font, background and borders can)");
             } else if (object->ce == font_class) {
                 if (name == "size") cell_to_change(self).style.font.size = size_of(value);
                 else if (name == "color") cell_to_change(self).style.font.color = color_of(value);
                 else if (name == "bold") cell_to_change(self).style.font.bold = zend_is_true(value);
-                else throw refuse(" (a font's size, color and bold can)");
+                else if (name == "italic") cell_to_change(self).style.font.italic = zend_is_true(value);
+                else if (name == "underline") cell_to_change(self).style.font.underline = underline_of(value);
+                else throw refuse(" (a font's size, color, bold, italic and underline can)");
+            } else if (object->ce == borders_class) {
+                const auto side = std::ranges::find(sides, name);
+                if (side == std::end(sides)) throw refuse(" (borders' left, right, top and bottom can)");
+                cell_to_change(self).style.borders.*side_members[side - std::begin(sides)] = edge_of(value);
+            } else if (object->ce == edge_class) {
+                auto &edge = cell_to_change(self).style.borders.*side_members[self.side];
+                if (name == "line") edge.line = line_of(value);
+                else if (name == "color") edge.color = color_of(value);
+                else throw refuse(" (an edge's line and color can)");
             } else {
                 throw refuse("");
             }
@@ -853,7 +966,9 @@ namespace {
         cell_class = register_class("SC\\Excel\\Cell", cell_methods, false);
         style_class = register_class("SC\\Excel\\Style", cell_methods, false);
         font_class = register_class("SC\\Excel\\Font", cell_methods, false);
-        for (auto *each: {sheet_class, row_class, cell_class, style_class, font_class}) each->create_object = create_part;
+        borders_class = register_class("SC\\Excel\\Borders", cell_methods, false);
+        edge_class = register_class("SC\\Excel\\Edge", cell_methods, false);
+        for (auto *each: {sheet_class, row_class, cell_class, style_class, font_class, borders_class, edge_class}) each->create_object = create_part;
         std::memcpy(&part_handlers, zend_get_std_object_handlers(), sizeof(part_handlers));
         part_handlers.offset = XtOffsetOf(part_object, std);
         part_handlers.free_obj = free_part;
