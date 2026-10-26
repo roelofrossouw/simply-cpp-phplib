@@ -186,3 +186,242 @@ function base64_encode(string $data): string
 function base64_decode(string $data): string
 {
 }
+
+namespace SC\Excel;
+
+use SC\Exception;
+
+/**
+ * An Excel workbook (.xlsx): its sheets in order, each holding the rows that have cells, each row
+ * the cells that are set, with their values and formulas. Works like an array of sheets, found by
+ * name ignoring case, as Excel does. Sheets, rows and cells are views into it (they keep it
+ * alive): changing one changes the workbook. No formatting, styles, merged cells or pictures.
+ *
+ *     $book = Workbook::open('prices.xlsx');
+ *     foreach ($book as $sheet)
+ *         foreach ($sheet as $row)
+ *             foreach ($row as $cell) echo $cell->name, ' ', $cell->value, ' ', $cell->formula;
+ *
+ *     $out = new Workbook();
+ *     $out['Prices']['A1'] = 'Item';          // the sheet added, as with an array
+ *     $out['Prices']['B3']->formula = '=B2*2';
+ *     $out->save('out.xlsx');
+ *
+ * @implements \ArrayAccess<string, Sheet>
+ * @implements \IteratorAggregate<string, Sheet>
+ * @link https://github.com/roelofrossouw/simply-cpp/wiki/PHP
+ */
+final class Workbook implements \ArrayAccess, \IteratorAggregate, \Countable
+{
+    /**
+     * Every sheet's cells: values, and formulas with "=" (a formula Excel keeps once for a range
+     * is given to each cell, its relative references moved).
+     *
+     * @throws Exception For a file that can't be read or isn't an .xlsx.
+     */
+    public static function open(string $filename): Workbook
+    {
+    }
+
+    /**
+     * The same, from an .xlsx's bytes.
+     *
+     * @throws Exception For bytes that aren't an .xlsx.
+     */
+    public static function fromString(string $bytes): Workbook
+    {
+    }
+
+    /**
+     * Writes it as an .xlsx: each cell's value and formula, text inline, no styles. Excel
+     * calculates the formulas when it opens the file.
+     *
+     * @throws Exception For a workbook without sheets, a number that isn't finite, or a file that
+     *     can't be written; no file is made then.
+     */
+    public function save(string $filename): void
+    {
+    }
+
+    /**
+     * The .xlsx as a string: what save() writes.
+     *
+     * @throws Exception As save().
+     */
+    public function output(): string
+    {
+    }
+
+    /**
+     * Adds an empty sheet.
+     *
+     * @throws Exception For a name Excel doesn't take: empty, longer than 31 characters, with any
+     *     of : \ / ? * [ ], starting or ending with ', or already used (ignoring case).
+     */
+    public function add(string $name): Sheet
+    {
+    }
+
+    /** Whether it has a sheet of that name (ignoring case). */
+    public function offsetExists(mixed $offset): bool
+    {
+    }
+
+    /**
+     * The sheet of that name, added when there's none.
+     *
+     * @throws Exception For a name Excel doesn't take.
+     */
+    public function offsetGet(mixed $offset): Sheet
+    {
+    }
+
+    /** @throws Exception Always: a sheet is added by $book[$name] or add(), not set. */
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+    }
+
+    /** @throws Exception Always: sheets can't be removed. */
+    public function offsetUnset(mixed $offset): void
+    {
+    }
+
+    /** @return \Iterator<string, Sheet> The sheets, by name, in the workbook's order. */
+    public function getIterator(): \Iterator
+    {
+    }
+
+    /** The number of sheets. */
+    public function count(): int
+    {
+    }
+}
+
+/**
+ * A sheet of a workbook: the rows that have cells, in order. A cell is "B3", or [row, column]
+ * counted from 0. $sheet['B3'] = 18.5 sets one; $sheet['B3'] is the cell, there or not yet
+ * (setting its value or formula adds it).
+ *
+ * @implements \ArrayAccess<string|array{int, int}, Cell>
+ * @implements \IteratorAggregate<int, Row>
+ */
+final class Sheet implements \ArrayAccess, \IteratorAggregate, \Countable
+{
+    /** Its name. Read only. */
+    public string $name;
+
+    private function __construct()
+    {
+    }
+
+    /** Whether the cell is there (set, even to null). */
+    public function offsetExists(mixed $offset): bool
+    {
+    }
+
+    /**
+     * The cell, there or not yet: reading one that isn't there gives a null value and no formula,
+     * and adds nothing.
+     *
+     * @throws Exception For a cell name that isn't one ("3B"), or beyond XFD1048576.
+     */
+    public function offsetGet(mixed $offset): Cell
+    {
+    }
+
+    /**
+     * Sets the cell's value (null, a number, text or a bool), or copies another cell's value and
+     * formula.
+     *
+     * @throws Exception For any other value, or no cell named ($sheet[] = ...).
+     */
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+    }
+
+    /** Removes the cell, and its row when that was its last. */
+    public function offsetUnset(mixed $offset): void
+    {
+    }
+
+    /** @return \Iterator<int, Row> The rows that have cells, by their index (from 0). */
+    public function getIterator(): \Iterator
+    {
+    }
+
+    /** The number of rows that have cells. */
+    public function count(): int
+    {
+    }
+}
+
+/**
+ * A row of a sheet: the cells in it that are set, in column order. A column is a number from 0,
+ * or its letters ("B").
+ *
+ * @implements \ArrayAccess<int|string, Cell>
+ * @implements \IteratorAggregate<int, Cell>
+ */
+final class Row implements \ArrayAccess, \IteratorAggregate, \Countable
+{
+    /** Its place in the sheet, from 0. Read only. */
+    public int $index;
+
+    private function __construct()
+    {
+    }
+
+    public function offsetExists(mixed $offset): bool
+    {
+    }
+
+    /** The cell in that column, there or not yet, as Sheet's. */
+    public function offsetGet(mixed $offset): Cell
+    {
+    }
+
+    /** Sets the cell in that column, as Sheet's. */
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+    }
+
+    public function offsetUnset(mixed $offset): void
+    {
+    }
+
+    /** @return \Iterator<int, Cell> The cells that are set, by their column (from 0). */
+    public function getIterator(): \Iterator
+    {
+    }
+
+    /** The number of cells that are set. */
+    public function count(): int
+    {
+    }
+}
+
+/**
+ * A cell of a sheet: its place, value and formula. Setting the value or formula of one that
+ * isn't there yet adds it.
+ */
+final class Cell
+{
+    /** Its row, from 0. Read only. */
+    public int $row;
+    /** Its column, from 0. Read only. */
+    public int $column;
+    /** Its name, "B3". Read only. */
+    public string $name;
+    /**
+     * Null (empty), a number (a float: Excel's numbers are), text or a bool. Dates are numbers,
+     * days since 1899-12-30. An error ("#DIV/0!") reads as its text. With a formula, the value it
+     * last calculated (null when it was never calculated).
+     */
+    public float|string|bool|null $value;
+    /** "=C6", with the "=", as Excel shows it; "" when there's none. */
+    public string $formula;
+
+    private function __construct()
+    {
+    }
+}

@@ -25,6 +25,8 @@ find_or_install_package(sc-image simply-cpp-image-dev simply-cpp-image 5.4.0)
 find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 1.4.2)
 # SC\Pdf: existing PDFs read, merged, decorated and protected.
 find_or_install_package(sc-pdflite simply-cpp-pdflite-dev simply-cpp-pdflite 4.5.0)
+# SC\Excel: Excel workbooks read and written (erase() and bytes() since 1.2.0).
+find_or_install_package(sc-office simply-cpp-office-dev simply-cpp-office 1.2.0)
 
 ## PHP ##
 # An extension is built for one PHP version: the one each Ubuntu release ships (jammy 8.1, noble
@@ -61,10 +63,10 @@ message(STATUS "Building for PHP ${SC_PHPLIB_PHP_VERSION} (module API ${SC_PHPLI
 # sc.so, loaded by PHP with dlopen(): no "lib" prefix, no link against PHP (its symbols resolve at
 # load time; macOS needs that said). It links the modules' shared libraries themselves, not their
 # CMake targets, which would also bring the static libraries under them into it.
-add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/php_glue.h)
+add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/php_glue.h)
 target_compile_options(sc PRIVATE ${SC_PHPLIB_PHP_INCLUDES})
 target_compile_definitions(sc PRIVATE SC_PHPLIB_VERSION="${SC_VERSION}")
-foreach (module sc-core sc-image sc-html2pdf sc-pdflite)
+foreach (module sc-core sc-image sc-html2pdf sc-pdflite sc-office)
     target_link_libraries(sc PRIVATE $<TARGET_LINKER_FILE:sc::${module}-shared>)
     target_include_directories(sc PRIVATE $<TARGET_PROPERTY:sc::${module}-shared,INTERFACE_INCLUDE_DIRECTORIES>)
 endforeach ()
@@ -114,4 +116,4 @@ set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONFLICTS "html2pdf-php")
 # The modules' packages are named, not left to dpkg-shlibdeps: on a build server the libraries it
 # links are the deploys' own copies in /usr/local/lib, which no package owns.
 package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common"
-        "simply-cpp (>= 1.20.0~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.4.2~)" "simply-cpp-pdflite (>= 4.5.0~)")
+        "simply-cpp (>= 1.20.0~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.4.2~)" "simply-cpp-pdflite (>= 4.5.0~)" "simply-cpp-office (>= 1.2.0~)")

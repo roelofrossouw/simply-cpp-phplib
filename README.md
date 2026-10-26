@@ -1,7 +1,7 @@
 # simply-cpp-phplib
 
 The `sc` PHP extension: simply-cpp's libraries for PHP, in the `SC` namespace. It's a thin
-wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-image, sc-core),
+wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-image, sc-core),
 which its package depends on. Apache-2.0, as everything it links is (no AGPL modules).
 
 ```php
@@ -31,6 +31,20 @@ SC\Pdf::protect('/tmp/invoice.pdf', '/tmp/invoice.pdf', ['owner_password' => $se
                  'permissions' => ['annotate' => true]]);          // print and annotate, nothing else
 SC\Pdf::pageCount('/tmp/invoice.pdf');
 
+// Excel workbooks (sc-office): sheets of cells with their values and formulas, read and written
+$book = SC\Excel\Workbook::open('prices.xlsx');        // or ::fromString($bytes)
+foreach ($book as $name => $sheet)                       // the sheets, by name
+    foreach ($sheet as $r => $row)                       // the rows that have cells (from 0)
+        foreach ($row as $c => $cell)                    // the cells that are set
+            echo $cell->name, ' ', $cell->value, ' ', $cell->formula;   // B3 18.5 =B2*2
+if (isset($book['Prices']['B2'])) $price = $book['Prices']['B2']->value; // or [[1, 1]]
+$out = new SC\Excel\Workbook();
+$out['Prices']['A1'] = 'Item';          // the sheet added, as with an array
+$out['Prices']['B2'] = 18.5;            // null, a number, text or a bool
+$out['Prices']['B3']->formula = '=B2*2';
+unset($out['Prices']['A1']);
+$out->save('/tmp/prices.xlsx');         // or $out->output(), the .xlsx as a string
+
 $png = SC\svg_to_png($svg, 800);        // 800 wide; width and height 0 (the default): its own size
 SC\base64_encode($bytes);               // SC\base64_decode() throws for text that isn't base64
 ```
@@ -39,6 +53,15 @@ The options are [sc::html2pdf's](https://github.com/roelofrossouw/simply-cpp-htm
 (`media`, `toc_title`, `outline`, `split_boxes` and `draw_margins` too); one it doesn't know
 throws, so a typo shows. Every failure is an `SC\Exception` (an `Exception`).
 
+`SC\Excel\Workbook`, `Sheet` and `Row` are `ArrayAccess`, `IteratorAggregate` and `Countable`, like
+sc-office's C++ classes: sheets are found by name ignoring case, cells by name (`"B3"`) or
+`[row, column]` from 0, a row's cells by column number or letters (`$row['B']`). A `Cell` has
+`row`, `column`, `name`, `value` (numbers are floats; dates are numbers, days since 1899-12-30) and
+`formula` (`"=C6"`). Reading a cell that isn't there gives a null value and adds nothing; setting
+its value or formula adds it. Sheets, rows and cells are views into their workbook, which they
+keep alive: changing one changes the workbook (`clone $book` makes a separate one). Sheets can't
+be removed; cells can (`unset()`).
+
 **Documentation:** the [simply-cpp wiki](https://github.com/roelofrossouw/simply-cpp/wiki)'s
 [HTML to PDF guide](https://github.com/roelofrossouw/simply-cpp/wiki/HTML-to-PDF) covers what the
 HTML can do.
@@ -46,7 +69,7 @@ HTML can do.
 **IDEs:** `stubs/sc.stub.php`, installed as `/usr/share/doc/simply-cpp-phplib/sc.stub.php`,
 describes all of it with types and documentation. Add that folder to PhpStorm's include path
 (Settings > PHP > Include Path) or to Intelephense's `intelephense.environment.includePaths`, and
-`SC\Html2Pdf`, its options and the functions autocomplete. A test checks the stubs against the
+`SC\Html2Pdf`, `SC\Excel\Workbook`, their options and the functions autocomplete. A test checks the stubs against the
 extension.
 
 ## Install

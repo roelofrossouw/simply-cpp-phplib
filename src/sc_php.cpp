@@ -12,7 +12,7 @@ namespace sc::php {
     namespace {
         // The extension's parts: a new one is a file and a line here.
         const std::vector<area> &areas() {
-            static const std::vector<area> all{base64_area(), svg_area(), html2pdf_area(), pdf_area()};
+            static const std::vector<area> all{base64_area(), svg_area(), html2pdf_area(), pdf_area(), excel_area()};
             return all;
         }
 
@@ -44,7 +44,7 @@ static PHP_MINFO_FUNCTION(sc) {
     php_info_print_table_start();
     php_info_print_table_row(2, "simply-cpp (sc)", "enabled");
     php_info_print_table_row(2, "Version", SC_PHPLIB_VERSION);
-    php_info_print_table_row(2, "Provides", "SC\\Html2Pdf, SC\\Pdf, SC\\svg_to_png(), SC\\base64_encode(), SC\\base64_decode()");
+    php_info_print_table_row(2, "Provides", "SC\\Html2Pdf, SC\\Pdf, SC\\Excel\\Workbook, SC\\svg_to_png(), SC\\base64_encode(), SC\\base64_decode()");
     php_info_print_table_end();
 }
 

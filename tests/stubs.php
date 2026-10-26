@@ -14,7 +14,7 @@ foreach ($extension->getFunctions() as $function) {
     check($stub_parameters === $function->getNumberOfParameters(), "$name has its parameters in the stubs");
 }
 foreach ($extension->getClasses() as $class) {
-    $short = substr($class->getName(), strlen('SC\\'));
+    $short = $class->getShortName(); // Html2Pdf, or Workbook in SC\Excel
     check(preg_match('/class ' . preg_quote($short, '/') . '\b/', $stub) === 1, "class $short is in the stubs");
     foreach ($class->getMethods() as $method) {
         if ($method->getDeclaringClass()->getName() !== $class->getName()) continue; // \Exception's own
