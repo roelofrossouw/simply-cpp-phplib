@@ -108,6 +108,8 @@ foreach (script postinst prerm postrm)
 endforeach ()
 set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONTROL_EXTRA
         "${CMAKE_CURRENT_BINARY_DIR}/packaging/postinst;${CMAKE_CURRENT_BINARY_DIR}/packaging/prerm;${CMAKE_CURRENT_BINARY_DIR}/packaging/postrm")
+# html2pdf-php's html2pdf extension declares SC\Html2Pdf too: PHP can load only one of the two.
+set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONFLICTS "html2pdf-php")
 # phpapi-<api> is what Ubuntu's PHP provides for its module API: the package can't go into another.
 # The modules' packages are named, not left to dpkg-shlibdeps: on a build server the libraries it
 # links are the deploys' own copies in /usr/local/lib, which no package owns.
