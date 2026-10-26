@@ -176,6 +176,24 @@ check(throws(function () use ($s) { $s['A3']->style->alignment->indent = 251; })
 check(throws(function () use ($s) { $s['A3']->style->alignment = ['rotate' => 90]; }), 'a key alignments lack throws');
 check(throws(function () use ($s) { $s['A3']->style->numberFormat = str_repeat('0', 256); }), 'a number format beyond 255 characters throws');
 
+// Merged cells and row heights.
+$s['A6'] = 'Merged across three';
+$s->merge('A6:C6');
+$s->merge([[7, 0], 'B9']);                  // A8:B9
+check($s->merged === ['A6:C6', 'A8:B9'], 'merges, by name or corners');
+check(throws(fn() => $s->merge('C6:D6')), 'a merge overlapping one there throws');
+check(throws(fn() => $s->merge('D7')), 'merging one cell throws');
+check(throws(fn() => $s->merge('A1-B2')), "a range that isn't one throws");
+check($s->unmerge('A8:B9') && !$s->unmerge('A8:B9') && $s->merged === ['A6:C6'], 'unmerge(): exactly that range, once');
+check($s->height(5) === null, 'a row without a height: null');
+check($s->height(5, 30) === 30.0 && $s->height(5) === 30.0, 'height() sets and reads, in points');
+$s->height(11, 12.5);                       // a row with no cells
+$s->height(12, 20);
+$s->height(12, null);
+check($s->heights === [5 => 30.0, 11 => 12.5], 'heights by row number');
+check(throws(fn() => $s->height(5, 410)), 'a height beyond 409 throws');
+check(throws(fn() => $s->height(-1)), 'a row below 0 throws');
+
 check($s->width('A') === null, 'a column without a width: null');
 check($s->width('A', 30) === 30.0 && $s->width(0) === 30.0, 'width() sets and reads, by letters or number');
 $s->width('B', 12.5);
@@ -199,6 +217,7 @@ check($t['E1']->style->borders->bottom->line === 'double' && $t['E1']->style->bo
 check(isset($t['F1']) && $t['F1']->style->borders->top->line === 'thin', 'a cell with only borders read back');
 check($t['A3']->style->numberFormat === '#,##0.00' && $t['B3']->style->numberFormat === '0.0%', 'number formats read back');
 check($t['B3']->style->alignment->horizontal === 'center' && $t['B3']->style->alignment->indent === 2, 'alignment read back');
+check($t->merged === ['A6:C6'] && $t->heights === [5 => 30.0, 11 => 12.5], 'merges and heights read back');
 
 // Mistakes.
 check(throws(fn() => Workbook::open("$dir/missing.xlsx")), 'a missing file throws');

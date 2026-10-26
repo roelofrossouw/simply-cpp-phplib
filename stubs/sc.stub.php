@@ -196,8 +196,8 @@ use SC\Exception;
  * the cells that are set, with their values and formulas. Works like an array of sheets, found by
  * name ignoring case, as Excel does. Sheets, rows, cells and their styles are views into it (they
  * keep it alive): changing one changes the workbook. Cells have a style (font size, colour, bold,
- * italic and underline; a background; borders; alignment; a number format) and columns a width;
- * no merged cells or pictures.
+ * italic and underline; a background; borders; alignment; a number format), columns a width, rows
+ * a height, and cells can be merged; no pictures.
  *
  *     $book = Workbook::open('prices.xlsx');
  *     foreach ($book as $sheet)
@@ -213,6 +213,8 @@ use SC\Exception;
  *     $out['Prices']['A1']->style->alignment->horizontal = 'center';
  *     $out['Prices']['B2']->style->numberFormat = '#,##0.00';
  *     $out['Prices']->width('A', 20);         // characters
+ *     $out['Prices']->height(0, 24);          // row 1, points
+ *     $out['Prices']->merge('A1:D1');
  *     $out->save('out.xlsx');
  *
  * @implements \ArrayAccess<string, Sheet>
@@ -319,6 +321,10 @@ final class Sheet implements \ArrayAccess, \IteratorAggregate, \Countable
     public string $name;
     /** @var array<int, float> The columns given a width, by number (from 0). Read only: see width(). */
     public array $widths;
+    /** @var array<int, float> The rows given a height, by number (from 0), in points. Read only: see height(). */
+    public array $heights;
+    /** @var list<string> The merged ranges ("A1:D1"), in the order they were merged. Read only: see merge(). */
+    public array $merged;
 
     private function __construct()
     {
@@ -333,6 +339,42 @@ final class Sheet implements \ArrayAccess, \IteratorAggregate, \Countable
      * @throws Exception For a column beyond XFD or a width outside 0 to 255.
      */
     public function width(int|string $column, ?float $characters = null): ?float
+    {
+    }
+
+    /**
+     * A row's height in points; null: Excel's default (15 for Calibri 11, more when the text needs
+     * it). With $points, sets it first (from 0 to 409, 0 hiding it; null for the default):
+     * $sheet->height(0, 24) for row 1. A row with a height and no cells is kept.
+     *
+     * @param int $row From 0.
+     * @throws Exception For a row below 0 or beyond 1048576, or a height outside 0 to 409.
+     */
+    public function height(int $row, ?float $points = null): ?float
+    {
+    }
+
+    /**
+     * Merges a range of cells into one, shown as its top left cell (the others keep what they
+     * hold, hidden).
+     *
+     * @param string|array{string|array{int, int}, string|array{int, int}} $range "A1:D1", or
+     *     [first, last], each a cell as $sheet[...] takes it.
+     * @throws Exception For one cell, a range that isn't one, or one overlapping a merge already
+     *     there.
+     */
+    public function merge(string|array $range): void
+    {
+    }
+
+    /**
+     * Undoes the merge of exactly that range.
+     *
+     * @param string|array{string|array{int, int}, string|array{int, int}} $range As merge() takes it.
+     * @return bool Whether there was one.
+     * @throws Exception For a range that isn't one.
+     */
+    public function unmerge(string|array $range): bool
     {
     }
 

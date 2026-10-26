@@ -66,7 +66,8 @@ sc-office's C++ classes: sheets are found by name ignoring case, cells by name (
 `italic`, `underline`), a `background` and `borders` (`left`, `right`, `top`, `bottom`, each an
 `Edge` with a `line` such as `"thin"` or `"double"` and a `color`), an `alignment` (`horizontal`,
 `vertical`, `wrap`, `indent`) and a `numberFormat` (Excel's code: `"#,##0.00"`, `"0%"`,
-`"yyyy-mm-dd"`), colours as `"#rrggbb"` (set as any CSS colour). `$sheet->width('B', 20)` sets a
+`"yyyy-mm-dd"`), colours as `"#rrggbb"` (set as any CSS colour). `$sheet->height(0, 24)` sets a
+row's height in points, `$sheet->merge('A1:D1')` merges cells (`unmerge()`, `$sheet->merged`). `$sheet->width('B', 20)` sets a
 column's width in characters, `$sheet->width('B')` reads it. Reading a cell that isn't there gives
 a null value and adds nothing; setting its value, formula or style adds it. Sheets, rows, cells and
 styles are views into their workbook, which they

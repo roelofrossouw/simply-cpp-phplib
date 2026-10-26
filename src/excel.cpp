@@ -18,6 +18,8 @@
 //     $out['Prices']['A1']->style->alignment->horizontal = 'center';
 //     $out['Prices']['B2']->style->numberFormat = '#,##0.00';
 //     $out['Prices']->width('A', 20);         // characters
+//     $out['Prices']->height(0, 24);          // row 1, points
+//     $out['Prices']->merge('A1:D1');
 //     $out->save('out.xlsx');                 // or $out->output(), the file as a string
 //
 // A Sheet, Row, Cell, Style, Font, Borders, Edge or Alignment is a view into its workbook (which it keeps alive), not a
@@ -408,6 +410,17 @@ namespace {
         throw std::invalid_argument{"SC\\Excel: a cell is \"B3\" or [row, column] (from 0)"};
     }
 
+    // A range: "A1:D3", or [first, last], each a cell as address_of() takes it.
+    excel::range range_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_STRING) return excel::range{view(Z_STR_P(given))};
+        if (Z_TYPE_P(given) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(given)) == 2) {
+            zval *first = zend_hash_index_find(Z_ARRVAL_P(given), 0), *last = zend_hash_index_find(Z_ARRVAL_P(given), 1);
+            if (first && last) return {address_of(first), address_of(last)};
+        }
+        throw std::invalid_argument{"SC\\Excel: a range is \"A1:D3\" or [first, last] (each \"B3\" or [row, column])"};
+    }
+
     // A column in a row: 1 (from 0), or its letters, "B".
     std::size_t column_of(zval *offset) {
         ZVAL_DEREF(offset);
@@ -716,8 +729,70 @@ namespace {
         RETURN_DOUBLE(*width);
     }
 
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_height, 0, 1, IS_DOUBLE, 1)
+        ZEND_ARG_TYPE_INFO(0, row, IS_LONG, 0)
+        ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, points, IS_DOUBLE, 1, "null")
+    ZEND_END_ARG_INFO()
+
+    // $sheet->height(0): row 1's height in points, null for Excel's default; $sheet->height(0, 24)
+    // sets it (from 0 to 409), $sheet->height(0, null) gives it the default. Either way it returns
+    // the height.
+    ZEND_NAMED_FUNCTION(sheet_height) {
+        zend_long row = 0;
+        double points = 0;
+        bool none = true;
+        ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_LONG(row)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_DOUBLE_OR_NULL(points, none)
+        ZEND_PARSE_PARAMETERS_END();
+        std::optional<sc::distance> height;
+        sc::php::guarded([&] {
+            auto &self = part(ZEND_THIS);
+            if (row < 0) throw std::out_of_range{"SC\\Excel: a row is a number from 0"};
+            const auto index = static_cast<std::size_t>(row);
+            if (ZEND_NUM_ARGS() == 2) self.sheet->height(index, none ? std::nullopt : std::optional<sc::distance>{points});
+            height = self.sheet->height(index);
+        });
+        if (EG(exception)) RETURN_THROWS();
+        if (!height) RETURN_NULL();
+        RETURN_DOUBLE(height->points());
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_merge, 0, 1, IS_VOID, 0)
+        ZEND_ARG_TYPE_MASK(0, range, MAY_BE_STRING | MAY_BE_ARRAY, NULL)
+    ZEND_END_ARG_INFO()
+
+    // $sheet->merge('A1:D1'): the range shown as one cell, its top left.
+    ZEND_NAMED_FUNCTION(sheet_merge) {
+        zval *cells = nullptr;
+        ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(cells)
+        ZEND_PARSE_PARAMETERS_END();
+        sc::php::guarded([&] { part(ZEND_THIS).sheet->merge(range_of(cells)); });
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_unmerge, 0, 1, _IS_BOOL, 0)
+        ZEND_ARG_TYPE_MASK(0, range, MAY_BE_STRING | MAY_BE_ARRAY, NULL)
+    ZEND_END_ARG_INFO()
+
+    // $sheet->unmerge('A1:D1'): undoes exactly that merge; whether there was one.
+    ZEND_NAMED_FUNCTION(sheet_unmerge) {
+        zval *cells = nullptr;
+        ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(cells)
+        ZEND_PARSE_PARAMETERS_END();
+        bool removed = false;
+        sc::php::guarded([&] { removed = part(ZEND_THIS).sheet->unmerge(range_of(cells)) > 0; });
+        if (EG(exception)) RETURN_THROWS();
+        RETURN_BOOL(removed);
+    }
+
     const zend_function_entry sheet_methods[] = {
         ZEND_NAMED_ME(width, sheet_width, arginfo_width, ZEND_ACC_PUBLIC)
+        ZEND_NAMED_ME(height, sheet_height, arginfo_height, ZEND_ACC_PUBLIC)
+        ZEND_NAMED_ME(merge, sheet_merge, arginfo_merge, ZEND_ACC_PUBLIC)
+        ZEND_NAMED_ME(unmerge, sheet_unmerge, arginfo_unmerge, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(__construct, part_construct, arginfo_none, ZEND_ACC_PRIVATE)
         ZEND_NAMED_ME(offsetExists, sheet_offset_exists, arginfo_offset_exists, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(offsetGet, sheet_offset_get, arginfo_offset_get, ZEND_ACC_PUBLIC)
@@ -840,7 +915,7 @@ namespace {
         ZEND_FE_END
     };
 
-    // ---- properties: Sheet's name and widths, Row's index, Cell's row, column, name, value, formula
+    // ---- properties: Sheet's name, widths, heights and merged, Row's index, Cell's row, column, name, value, formula
     // and style, Style's font, background, borders, alignment and numberFormat, Font's size, color,
     // bold, italic and underline, Borders' left, right, top and bottom, Edge's line and color,
     // Alignment's horizontal, vertical, wrap and indent ----
@@ -855,6 +930,15 @@ namespace {
             } else if (name == "widths") { // by column number, as rows and cells are
                 array_init(out);
                 for (const auto &[column, width]: self.sheet->widths()) add_index_double(out, static_cast<zend_ulong>(column), width);
+            } else if (name == "heights") { // by row number, in points
+                array_init(out);
+                for (const auto &[row, height]: self.sheet->heights()) add_index_double(out, static_cast<zend_ulong>(row), height.points());
+            } else if (name == "merged") { // "A1:D1" ...
+                array_init(out);
+                for (const auto &cells: self.sheet->merged()) {
+                    const auto text = cells.name();
+                    add_next_index_stringl(out, text.data(), text.size());
+                }
             } else return false;
             return true;
         }
@@ -928,7 +1012,7 @@ namespace {
     }
 
     std::span<const std::string_view> property_names(const zend_object *object) {
-        static constexpr std::string_view sheet[] = {"name", "widths"}, row[] = {"index"},
+        static constexpr std::string_view sheet[] = {"name", "widths", "heights", "merged"}, row[] = {"index"},
                                           cell[] = {"row", "column", "name", "value", "formula", "style"},
                                           style[] = {"font", "background", "borders", "alignment", "numberFormat"},
                                           font[] = {"size", "color", "bold", "italic", "underline"}, edge[] = {"line", "color"},
