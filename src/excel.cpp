@@ -20,7 +20,7 @@
 //     $out['Prices']->width('A', 20);         // characters
 //     $out['Prices']->height(0, 24);          // row 1, points
 //     $out['Prices']->merge('A1:D1');
-//     $out['Prices']->hidden('E', true);
+//     $out['Prices']->hiddenColumn('E', true);
 //     $out['Prices']->freeze('A2');           // row 1 stays in view
 //     $out->save('out.xlsx');                 // or $out->output(), the file as a string
 //
@@ -340,19 +340,20 @@ namespace {
     }
 
     // A font given: another cell's Font, ['size' => 14, 'color' => '#c00000', 'bold' => true,
-    // 'italic' => true, 'underline' => 'single'] (what's left out is the default), or null for the
-    // default font.
+    // 'italic' => true, 'strike' => true, 'underline' => 'single'] (what's left out is the default),
+    // or null for the default font.
     excel::font font_of(zval *given) {
         ZVAL_DEREF(given);
         if (Z_TYPE_P(given) == IS_NULL) return {};
         if (const auto *from = given_part(given, font_class)) return cell_now(*from).style.font;
-        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a font is a Font, an array ['size' => ..., 'color' => ..., 'bold' => ..., 'italic' => ..., 'underline' => ...] or null"};
+        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a font is a Font, an array ['size' => ..., 'color' => ..., 'bold' => ..., 'italic' => ..., 'strike' => ..., 'underline' => ...] or null"};
         excel::font font;
-        each_key(given, {"size", "color", "bold", "italic", "underline"}, "a font", [&](const std::string_view key, zval *value) {
+        each_key(given, {"size", "color", "bold", "italic", "strike", "underline"}, "a font", [&](const std::string_view key, zval *value) {
             if (key == "size") font.size = size_of(value);
             else if (key == "color") font.color = color_of(value);
             else if (key == "bold") font.bold = zend_is_true(value);
             else if (key == "italic") font.italic = zend_is_true(value);
+            else if (key == "strike") font.strike = zend_is_true(value);
             else font.underline = underline_of(value);
         });
         return font;
@@ -790,14 +791,14 @@ namespace {
         RETURN_BOOL(removed);
     }
 
-    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_hidden, 0, 1, _IS_BOOL, 0)
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_hidden_column, 0, 1, _IS_BOOL, 0)
         ZEND_ARG_TYPE_MASK(0, column, MAY_BE_LONG | MAY_BE_STRING, NULL)
         ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hide, _IS_BOOL, 1, "null")
     ZEND_END_ARG_INFO()
 
-    // $sheet->hidden('E'): whether the column is hidden; $sheet->hidden('E', true) hides it, false
-    // shows it again (keeping its width). Either way it returns whether it's hidden.
-    ZEND_NAMED_FUNCTION(sheet_hidden) {
+    // $sheet->hiddenColumn('E'): whether the column is hidden; $sheet->hiddenColumn('E', true) hides
+    // it, false shows it again (keeping its width). Either way it returns whether it's hidden.
+    ZEND_NAMED_FUNCTION(sheet_hidden_column) {
         zval *column = nullptr;
         bool hide = false, none = true;
         ZEND_PARSE_PARAMETERS_START(1, 2)
@@ -809,8 +810,35 @@ namespace {
         sc::php::guarded([&] {
             auto &self = part(ZEND_THIS);
             const auto index = column_of(column);
-            if (!none) self.sheet->hidden(index, hide);
-            hidden = self.sheet->hidden(index);
+            if (!none) self.sheet->hidden_column(index, hide);
+            hidden = self.sheet->hidden_column(index);
+        });
+        if (EG(exception)) RETURN_THROWS();
+        RETURN_BOOL(hidden);
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_hidden_row, 0, 1, _IS_BOOL, 0)
+        ZEND_ARG_TYPE_INFO(0, row, IS_LONG, 0)
+        ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hide, _IS_BOOL, 1, "null")
+    ZEND_END_ARG_INFO()
+
+    // $sheet->hiddenRow(4): whether row 5 is hidden; $sheet->hiddenRow(4, true) hides it, false shows
+    // it again (keeping its height and cells). Either way it returns whether it's hidden.
+    ZEND_NAMED_FUNCTION(sheet_hidden_row) {
+        zend_long row = 0;
+        bool hide = false, none = true;
+        ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_LONG(row)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_BOOL_OR_NULL(hide, none)
+        ZEND_PARSE_PARAMETERS_END();
+        bool hidden = false;
+        sc::php::guarded([&] {
+            auto &self = part(ZEND_THIS);
+            if (row < 0) throw std::out_of_range{"SC\\Excel: a row is a number from 0"};
+            const auto index = static_cast<std::size_t>(row);
+            if (!none) self.sheet->hidden_row(index, hide);
+            hidden = self.sheet->hidden_row(index);
         });
         if (EG(exception)) RETURN_THROWS();
         RETURN_BOOL(hidden);
@@ -839,7 +867,8 @@ namespace {
     }
 
     const zend_function_entry sheet_methods[] = {
-        ZEND_NAMED_ME(hidden, sheet_hidden, arginfo_hidden, ZEND_ACC_PUBLIC)
+        ZEND_NAMED_ME(hiddenColumn, sheet_hidden_column, arginfo_hidden_column, ZEND_ACC_PUBLIC)
+        ZEND_NAMED_ME(hiddenRow, sheet_hidden_row, arginfo_hidden_row, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(freeze, sheet_freeze, arginfo_freeze, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(unfreeze, sheet_unfreeze, arginfo_void, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(width, sheet_width, arginfo_width, ZEND_ACC_PUBLIC)
@@ -968,9 +997,10 @@ namespace {
         ZEND_FE_END
     };
 
-    // ---- properties: Sheet's name, widths, heights, merged, hidden and frozen, Row's index, Cell's row, column, name, value, formula
+    // ---- properties: Sheet's name, widths, heights, merged, hiddenColumns, hiddenRows and frozen,
+    // Row's index, Cell's row, column, name, value, formula
     // and style, Style's font, background, borders, alignment and numberFormat, Font's size, color,
-    // bold, italic and underline, Borders' left, right, top and bottom, Edge's line and color,
+    // bold, italic, strike and underline, Borders' left, right, top and bottom, Edge's line and color,
     // Alignment's horizontal, vertical, wrap and indent ----
 
     // The property's value into out; false when the object has no such property.
@@ -986,9 +1016,10 @@ namespace {
             } else if (name == "heights") { // by row number, in points
                 array_init(out);
                 for (const auto &[row, height]: self.sheet->heights()) add_index_double(out, static_cast<zend_ulong>(row), height.points());
-            } else if (name == "hidden") { // the hidden columns' numbers
+            } else if (name == "hiddenColumns" || name == "hiddenRows") { // their numbers
                 array_init(out);
-                for (const auto column: self.sheet->hidden()) add_next_index_long(out, static_cast<zend_long>(column));
+                for (const auto each: name == "hiddenColumns" ? self.sheet->hidden_columns() : self.sheet->hidden_rows())
+                    add_next_index_long(out, static_cast<zend_long>(each));
             } else if (name == "frozen") { // "B2", or null
                 if (const auto &frozen = self.sheet->frozen()) {
                     const auto text = frozen->name();
@@ -1045,6 +1076,7 @@ namespace {
             } else if (name == "color") zval_of(font.color, out);
             else if (name == "bold") ZVAL_BOOL(out, font.bold);
             else if (name == "italic") ZVAL_BOOL(out, font.italic);
+            else if (name == "strike") ZVAL_BOOL(out, font.strike);
             else if (name == "underline") zval_of_kind(font.underline, out);
             else return false;
             return true;
@@ -1073,10 +1105,10 @@ namespace {
     }
 
     std::span<const std::string_view> property_names(const zend_object *object) {
-        static constexpr std::string_view sheet[] = {"name", "widths", "heights", "merged", "hidden", "frozen"}, row[] = {"index"},
+        static constexpr std::string_view sheet[] = {"name", "widths", "heights", "merged", "hiddenColumns", "hiddenRows", "frozen"}, row[] = {"index"},
                                           cell[] = {"row", "column", "name", "value", "formula", "style"},
                                           style[] = {"font", "background", "borders", "alignment", "numberFormat"},
-                                          font[] = {"size", "color", "bold", "italic", "underline"}, edge[] = {"line", "color"},
+                                          font[] = {"size", "color", "bold", "italic", "strike", "underline"}, edge[] = {"line", "color"},
                                           alignment[] = {"horizontal", "vertical", "wrap", "indent"};
         if (object->ce == sheet_class) return sheet;
         if (object->ce == row_class) return row;
@@ -1120,8 +1152,9 @@ namespace {
                 else if (name == "color") cell_to_change(self).style.font.color = color_of(value);
                 else if (name == "bold") cell_to_change(self).style.font.bold = zend_is_true(value);
                 else if (name == "italic") cell_to_change(self).style.font.italic = zend_is_true(value);
+                else if (name == "strike") cell_to_change(self).style.font.strike = zend_is_true(value);
                 else if (name == "underline") cell_to_change(self).style.font.underline = underline_of(value);
-                else throw refuse(" (a font's size, color, bold, italic and underline can)");
+                else throw refuse(" (a font's size, color, bold, italic, strike and underline can)");
             } else if (object->ce == borders_class) {
                 const auto side = std::ranges::find(sides, name);
                 if (side == std::end(sides)) throw refuse(" (borders' left, right, top and bottom can)");

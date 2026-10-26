@@ -63,12 +63,13 @@ sc-office's C++ classes: sheets are found by name ignoring case, cells by name (
 `[row, column]` from 0, a row's cells by column number or letters (`$row['B']`). A `Cell` has
 `row`, `column`, `name`, `value` (numbers are floats; dates are numbers, days since 1899-12-30) and
 `formula` (`"=C6"`) and `style`: a `Style` with a `font` (`size` in points, `color`, `bold`,
-`italic`, `underline`), a `background` and `borders` (`left`, `right`, `top`, `bottom`, each an
+`italic`, `strike`, `underline`), a `background` and `borders` (`left`, `right`, `top`, `bottom`, each an
 `Edge` with a `line` such as `"thin"` or `"double"` and a `color`), an `alignment` (`horizontal`,
 `vertical`, `wrap`, `indent`) and a `numberFormat` (Excel's code: `"#,##0.00"`, `"0%"`,
 `"yyyy-mm-dd"`), colours as `"#rrggbb"` (set as any CSS colour). `$sheet->height(0, 24)` sets a
 row's height in points, `$sheet->merge('A1:D1')` merges cells (`unmerge()`, `$sheet->merged`),
-`$sheet->hidden('E', true)` hides a column, `$sheet->freeze('A2')` keeps row 1 in view. `$sheet->width('B', 20)` sets a
+`$sheet->hiddenColumn('E', true)` and `$sheet->hiddenRow(9, true)` hide a column and a row,
+`$sheet->freeze('A2')` keeps row 1 in view. `$sheet->width('B', 20)` sets a
 column's width in characters, `$sheet->width('B')` reads it. Reading a cell that isn't there gives
 a null value and adds nothing; setting its value, formula or style adds it. Sheets, rows, cells and
 styles are views into their workbook, which they

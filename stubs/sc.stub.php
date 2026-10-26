@@ -196,8 +196,9 @@ use SC\Exception;
  * the cells that are set, with their values and formulas. Works like an array of sheets, found by
  * name ignoring case, as Excel does. Sheets, rows, cells and their styles are views into it (they
  * keep it alive): changing one changes the workbook. Cells have a style (font size, colour, bold,
- * italic and underline; a background; borders; alignment; a number format), columns a width (or
- * are hidden), rows a height, cells can be merged and panes frozen; no pictures.
+ * italic, strikethrough and underline; a background; borders; alignment; a number format), columns
+ * a width and rows a height (either can be hidden), cells can be merged and panes frozen; no
+ * pictures.
  *
  *     $book = Workbook::open('prices.xlsx');
  *     foreach ($book as $sheet)
@@ -215,7 +216,8 @@ use SC\Exception;
  *     $out['Prices']->width('A', 20);         // characters
  *     $out['Prices']->height(0, 24);          // row 1, points
  *     $out['Prices']->merge('A1:D1');
- *     $out['Prices']->hidden('E', true);
+ *     $out['Prices']->hiddenColumn('E', true);
+ *     $out['Prices']->hiddenRow(9, true);     // row 10
  *     $out['Prices']->freeze('A2');           // row 1 stays in view
  *     $out->save('out.xlsx');
  *
@@ -327,8 +329,10 @@ final class Sheet implements \ArrayAccess, \IteratorAggregate, \Countable
     public array $heights;
     /** @var list<string> The merged ranges ("A1:D1"), in the order they were merged. Read only: see merge(). */
     public array $merged;
-    /** @var list<int> The hidden columns, by number (from 0). Read only: see hidden(). */
-    public array $hidden;
+    /** @var list<int> The hidden columns, by number (from 0). Read only: see hiddenColumn(). */
+    public array $hiddenColumns;
+    /** @var list<int> The hidden rows, by number (from 0). Read only: see hiddenRow(). */
+    public array $hiddenRows;
     /** The cell the panes are frozen at ("B2"), null when they aren't. Read only: see freeze(). */
     public ?string $frozen;
 
@@ -391,7 +395,18 @@ final class Sheet implements \ArrayAccess, \IteratorAggregate, \Countable
      * @param int|string $column A number from 0, or letters ("E").
      * @throws Exception For a column beyond XFD.
      */
-    public function hidden(int|string $column, ?bool $hide = null): bool
+    public function hiddenColumn(int|string $column, ?bool $hide = null): bool
+    {
+    }
+
+    /**
+     * Whether a row is hidden. With $hide, hides it first (true) or shows it again (false, keeping
+     * its height and cells). A hidden row with no cells is kept.
+     *
+     * @param int $row From 0.
+     * @throws Exception For a row below 0 or beyond 1048576.
+     */
+    public function hiddenRow(int $row, ?bool $hide = null): bool
     {
     }
 
@@ -539,7 +554,7 @@ final class Style
 {
     /**
      * The font. Set it to another cell's font, an array ['size' => ..., 'color' => ..., 'bold' =>
-     * ..., 'italic' => ..., 'underline' => ...] or null.
+     * ..., 'italic' => ..., 'strike' => ..., 'underline' => ...] or null.
      */
     public Font $font;
     /**
@@ -670,6 +685,8 @@ final class Font
     public ?string $color;
     public bool $bold;
     public bool $italic;
+    /** Struck through. */
+    public bool $strike;
     /**
      * "single", "double", "singleAccounting" or "doubleAccounting" (the accounting ones run the
      * cell's width); null for none. Set true for "single", false for none.

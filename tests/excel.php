@@ -88,7 +88,7 @@ check($back['Prices']['E1']->formula === '=SUM(B2:B3)', 'a cell assigned copies 
 unset($sheet['E1']);
 check(!isset($sheet['E1']), 'unset() removes a cell');
 check(json_decode(json_encode($sheet['B2']), true) === ['row' => 1, 'column' => 1, 'name' => 'B2', 'value' => 18.5, 'formula' => '',
-      'style' => ['font' => ['size' => null, 'color' => null, 'bold' => false, 'italic' => false, 'underline' => null], 'background' => null,
+      'style' => ['font' => ['size' => null, 'color' => null, 'bold' => false, 'italic' => false, 'strike' => false, 'underline' => null], 'background' => null,
                   'borders' => ['left' => ['line' => null, 'color' => null], 'right' => ['line' => null, 'color' => null],
                                 'top' => ['line' => null, 'color' => null], 'bottom' => ['line' => null, 'color' => null]],
                   'alignment' => ['horizontal' => 'general', 'vertical' => 'bottom', 'wrap' => false, 'indent' => 0], 'numberFormat' => '']],
@@ -127,7 +127,7 @@ check(throws(function () use ($s) { $s['A1']->style->font->size = 500; }), 'a fo
 check(throws(function () use ($s) { $s['A1']->style->font->color = 'reddish'; }), "text that isn't a colour throws");
 check(throws(function () use ($s) { $s['A1']->style = ['colour' => 'red']; }), 'a key a style lacks throws');
 check(throws(function () use ($s) { $s['A1']->style = 'bold'; }), 'a style that is text throws');
-check(throws(function () use ($s) { $s['A1']->style->font->strike = true; }), 'a property fonts lack throws');
+check(throws(function () use ($s) { $s['A1']->style->font->shadow = true; }), 'a property fonts lack throws');
 // Italic, underline and borders.
 $s['E1'] = 'Ruled';
 $s['E1']->style->font->italic = true;
@@ -195,12 +195,22 @@ check(throws(fn() => $s->height(5, 410)), 'a height beyond 409 throws');
 check(throws(fn() => $s->height(-1)), 'a row below 0 throws');
 
 // Hidden columns and frozen panes.
-check(!$s->hidden('E') && $s->hidden('E', true) && $s->hidden(4), 'hidden(): sets and reads, by letters or number');
-$s->hidden('F', true);
-$s->hidden('G', true);
-$s->hidden('G', false);
-check($s->hidden === [4, 5], 'the hidden columns by number');
-check(throws(fn() => $s->hidden('XFE', true)), 'a column beyond XFD throws');
+check(!$s->hiddenColumn('E') && $s->hiddenColumn('E', true) && $s->hiddenColumn(4), 'hiddenColumn(): sets and reads, by letters or number');
+$s->hiddenColumn('F', true);
+$s->hiddenColumn('G', true);
+$s->hiddenColumn('G', false);
+check($s->hiddenColumns === [4, 5], 'the hidden columns by number');
+check(throws(fn() => $s->hiddenColumn('XFE', true)), 'a column beyond XFD throws');
+check(!$s->hiddenRow(13) && $s->hiddenRow(13, true) && $s->hiddenRow(13), 'hiddenRow(): sets and reads');
+$s->hiddenRow(1, true);                     // a row with cells
+$s->hiddenRow(14, true);
+$s->hiddenRow(14, false);
+check($s->hiddenRows === [1, 13], 'the hidden rows by number');
+check(throws(fn() => $s->hiddenRow(-1, true)), 'a row below 0 throws');
+$s['E1']->style->font->strike = true;
+check($s['E1']->style->font->strike && !$s['A1']->style->font->strike, 'strike');
+$s['H1']->style->font = ['strike' => true];
+check($s['H1']->style->font->strike, 'strike in a font array');
 check($s->frozen === null, 'nothing frozen: null');
 $s->freeze('B2');
 check($s->frozen === 'B2', 'freeze()');
@@ -237,7 +247,8 @@ check(isset($t['F1']) && $t['F1']->style->borders->top->line === 'thin', 'a cell
 check($t['A3']->style->numberFormat === '#,##0.00' && $t['B3']->style->numberFormat === '0.0%', 'number formats read back');
 check($t['B3']->style->alignment->horizontal === 'center' && $t['B3']->style->alignment->indent === 2, 'alignment read back');
 check($t->merged === ['A6:C6'] && $t->heights === [5 => 30.0, 11 => 12.5], 'merges and heights read back');
-check($t->hidden === [4, 5] && $t->frozen === 'A2', 'hidden columns and frozen panes read back');
+check($t->hiddenColumns === [4, 5] && $t->hiddenRows === [1, 13] && $t->frozen === 'A2', 'hidden columns and rows, frozen panes read back');
+check($t['E1']->style->font->strike, 'strike read back');
 
 // Mistakes.
 check(throws(fn() => Workbook::open("$dir/missing.xlsx")), 'a missing file throws');
