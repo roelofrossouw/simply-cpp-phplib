@@ -12,10 +12,13 @@
 //     $out = new SC\Excel\Workbook();
 //     $out['Prices']['A1'] = 'Item';          // the sheet added, as std::map would
 //     $out['Prices']['B3']->formula = '=B2*2';
+//     $out['Prices']['A1']->style->font->bold = true;
+//     $out['Prices']['A1']->style->background = '#ddebf7';
+//     $out['Prices']->width('A', 20);         // characters
 //     $out->save('out.xlsx');                 // or $out->output(), the file as a string
 //
-// A Sheet, Row or Cell is a view into its workbook (which it keeps alive), not a copy: changing it
-// changes the workbook. Every failure is an SC\Exception.
+// A Sheet, Row, Cell, Style or Font is a view into its workbook (which it keeps alive), not a
+// copy: changing it changes the workbook. Every failure is an SC\Exception.
 
 #include "php_glue.h"
 
@@ -24,6 +27,9 @@
 #include <ext/spl/spl_array.h>
 #include <zend_interfaces.h>
 
+#include <algorithm>
+#include <cctype>
+#include <cmath>
 #include <cstring>
 #include <memory>
 #include <span>
@@ -34,7 +40,8 @@ namespace {
     namespace excel = sc::office::excel;
     using sc::php::view;
 
-    zend_class_entry *workbook_class = nullptr, *sheet_class = nullptr, *row_class = nullptr, *cell_class = nullptr;
+    zend_class_entry *workbook_class = nullptr, *sheet_class = nullptr, *row_class = nullptr, *cell_class = nullptr, *style_class = nullptr,
+                     *font_class = nullptr;
     zend_object_handlers workbook_handlers, part_handlers;
 
     // ---- the objects ----
@@ -44,8 +51,8 @@ namespace {
         zend_object std;
     };
 
-    // A Sheet, Row or Cell: its workbook's object (kept alive while this one lives), the sheet, and
-    // the row and column it stands for (as far as it has them).
+    // A Sheet, Row, Cell, or a cell's Style or Font: its workbook's object (kept alive while this one
+    // lives), the sheet, and the row and column it stands for (as far as it has them).
     struct part_object {
         zend_object *owner;
         excel::sheet *sheet;
@@ -142,19 +149,108 @@ namespace {
         }
     }
 
-    // A cell given to a sheet or row: its value and formula, from another cell or a value.
+    // The cell a Cell, Style or Font stands for as it is now: a plain empty one when it isn't there.
+    const excel::cell &cell_now(const part_object &self) {
+        static const excel::cell none;
+        const excel::address where{self.row, self.column};
+        return self.sheet && self.sheet->contains(where) ? self.sheet->at(where) : none;
+    }
+
+    // The cell a Cell, Style or Font stands for, added when it isn't there, to be changed.
+    excel::cell &cell_to_change(part_object &self) { return (*self.sheet)[{self.row, self.column}]; }
+
+    // The part object given is of that class (and from a workbook): what it stands for.
+    const part_object *given_part(zval *given, const zend_class_entry *type) {
+        if (Z_TYPE_P(given) != IS_OBJECT || Z_OBJCE_P(given) != type) return nullptr;
+        const auto *from = part_of(Z_OBJ_P(given));
+        return from->sheet ? from : nullptr;
+    }
+
+    // A colour as "#rrggbb"; null: none.
+    void zval_of(const std::optional<sc::color> &color, zval *out) {
+        if (!color) {
+            ZVAL_NULL(out);
+            return;
+        }
+        const auto hex = color->to_hex();
+        ZVAL_STRINGL(out, hex.data(), hex.size());
+    }
+
+    // A colour given as CSS gives one ("#c00000", "#c00", "red", "rgb(192, 0, 0)"); null: none.
+    // Text that isn't a colour throws (sc::color would make it black).
+    std::optional<sc::color> color_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL) return std::nullopt;
+        if (Z_TYPE_P(given) != IS_STRING) throw std::invalid_argument{"SC\\Excel: a colour is text, \"#c00000\" or \"red\", or null"};
+        std::string text{view(Z_STR_P(given))};
+        const sc::color color{text};
+        std::ranges::transform(text, text.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (color == sc::color::Black && text != "black" && text != "#000" && text != "#000000" && !text.starts_with("rgb") && !text.starts_with("hsl"))
+            throw std::invalid_argument{"SC\\Excel: \"" + std::string{view(Z_STR_P(given))} + "\" isn't a colour"};
+        return color;
+    }
+
+    // A font's size in points, from 1 to 409; null: the workbook's.
+    std::optional<sc::distance> size_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL) return std::nullopt;
+        if (Z_TYPE_P(given) != IS_LONG && Z_TYPE_P(given) != IS_DOUBLE) throw std::invalid_argument{"SC\\Excel: a font's size is a number of points, or null"};
+        const double points = zval_get_double(given);
+        if (!(points >= 1 && points <= 409)) throw std::out_of_range{"SC\\Excel: a font's size is from 1 to 409 points"};
+        return points;
+    }
+
+    // Each of an array's string keys, with its value; a key not in known throws.
+    template<typename Each>
+    void each_key(zval *given, const std::initializer_list<std::string_view> known, const char *what, Each each) {
+        zend_string *key = nullptr;
+        zval *value = nullptr;
+        ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(given), key, value) {
+            if (!key || std::ranges::find(known, view(key)) == known.end())
+                throw std::invalid_argument{std::string{"SC\\Excel: "} + what + " has no '" + (key ? std::string{view(key)} : std::string{"(a number)"}) + "'"};
+            each(view(key), value);
+        } ZEND_HASH_FOREACH_END();
+    }
+
+    // A font given: another cell's Font, ['size' => 14, 'color' => '#c00000', 'bold' => true]
+    // (what's left out is the default), or null for the default font.
+    excel::font font_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL) return {};
+        if (const auto *from = given_part(given, font_class)) return cell_now(*from).style.font;
+        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a font is a Font, an array ['size' => ..., 'color' => ..., 'bold' => ...] or null"};
+        excel::font font;
+        each_key(given, {"size", "color", "bold"}, "a font", [&](const std::string_view key, zval *value) {
+            if (key == "size") font.size = size_of(value);
+            else if (key == "color") font.color = color_of(value);
+            else font.bold = zend_is_true(value);
+        });
+        return font;
+    }
+
+    // A style given: another cell's Style, ['font' => [...], 'background' => '#ddebf7'] (what's
+    // left out is the default), or null for the plain style.
+    excel::style style_of(zval *given) {
+        ZVAL_DEREF(given);
+        if (Z_TYPE_P(given) == IS_NULL) return {};
+        if (const auto *from = given_part(given, style_class)) return cell_now(*from).style;
+        if (Z_TYPE_P(given) != IS_ARRAY) throw std::invalid_argument{"SC\\Excel: a style is a Style, an array ['font' => [...], 'background' => ...] or null"};
+        excel::style style;
+        each_key(given, {"font", "background"}, "a style", [&](const std::string_view key, zval *value) {
+            if (key == "font") style.font = font_of(value);
+            else style.background = color_of(value);
+        });
+        return style;
+    }
+
+    // A cell given to a sheet or row: another cell (its value, formula and style), or a value.
     void assign(excel::cell &cell, zval *given) {
         ZVAL_DEREF(given);
-        if (Z_TYPE_P(given) == IS_OBJECT && Z_OBJCE_P(given) == cell_class) {
-            const auto &from = *part_of(Z_OBJ_P(given));
-            if (from.sheet && from.sheet->contains({from.row, from.column})) {
-                const auto &source = from.sheet->at({from.row, from.column});
-                cell.value = source.value;
-                cell.formula = source.formula;
-            } else {
-                cell.value = {};
-                cell.formula.clear();
-            }
+        if (const auto *from = given_part(given, cell_class)) {
+            const auto source = cell_now(*from); // a copy: it may be this cell
+            cell.value = source.value;
+            cell.formula = source.formula;
+            cell.style = source.style;
             return;
         }
         cell = value_of(given);
@@ -451,7 +547,37 @@ namespace {
         RETURN_LONG(rows);
     }
 
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_width, 0, 1, IS_DOUBLE, 1)
+        ZEND_ARG_TYPE_MASK(0, column, MAY_BE_LONG | MAY_BE_STRING, NULL)
+        ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, characters, IS_DOUBLE, 1, "null")
+    ZEND_END_ARG_INFO()
+
+    // $sheet->width('B'): the column's width in characters, null for Excel's default;
+    // $sheet->width('B', 20) sets it (from 0 to 255), $sheet->width('B', null) gives it the default.
+    // Either way it returns the width.
+    ZEND_NAMED_FUNCTION(sheet_width) {
+        zval *column = nullptr;
+        double characters = 0;
+        bool none = true;
+        ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_ZVAL(column)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_DOUBLE_OR_NULL(characters, none)
+        ZEND_PARSE_PARAMETERS_END();
+        std::optional<double> width;
+        sc::php::guarded([&] {
+            auto &self = part(ZEND_THIS);
+            const auto index = column_of(column);
+            if (ZEND_NUM_ARGS() == 2) self.sheet->width(index, none ? std::nullopt : std::optional{characters});
+            width = self.sheet->width(index);
+        });
+        if (EG(exception)) RETURN_THROWS();
+        if (!width) RETURN_NULL();
+        RETURN_DOUBLE(*width);
+    }
+
     const zend_function_entry sheet_methods[] = {
+        ZEND_NAMED_ME(width, sheet_width, arginfo_width, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(__construct, part_construct, arginfo_none, ZEND_ACC_PRIVATE)
         ZEND_NAMED_ME(offsetExists, sheet_offset_exists, arginfo_offset_exists, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(offsetGet, sheet_offset_get, arginfo_offset_get, ZEND_ACC_PUBLIC)
@@ -568,20 +694,42 @@ namespace {
         ZEND_FE_END
     };
 
+    // Cell, Style and Font: properties only.
     const zend_function_entry cell_methods[] = {
         ZEND_NAMED_ME(__construct, part_construct, arginfo_none, ZEND_ACC_PRIVATE)
         ZEND_FE_END
     };
 
-    // ---- properties: Sheet's name, Row's index, Cell's row, column, name, value and formula ----
+    // ---- properties: Sheet's name and widths, Row's index, Cell's row, column, name, value, formula
+    // and style, Style's font and background, Font's size, color and bold ----
 
     // The property's value into out; false when the object has no such property.
     bool property(zend_object *object, const std::string_view name, zval *out) {
         auto &self = *part_of(object);
         if (!self.sheet) return false;
         if (object->ce == sheet_class) {
-            if (name != "name") return false;
-            ZVAL_STRINGL(out, self.sheet->name().data(), self.sheet->name().size());
+            if (name == "name") {
+                ZVAL_STRINGL(out, self.sheet->name().data(), self.sheet->name().size());
+            } else if (name == "widths") { // by column number, as rows and cells are
+                array_init(out);
+                for (const auto &[column, width]: self.sheet->widths()) add_index_double(out, static_cast<zend_ulong>(column), width);
+            } else return false;
+            return true;
+        }
+        if (object->ce == style_class) {
+            if (name == "font") make_part(out, font_class, self.owner, *self.sheet, self.row, self.column);
+            else if (name == "background") zval_of(cell_now(self).style.background, out);
+            else return false;
+            return true;
+        }
+        if (object->ce == font_class) {
+            const auto &font = cell_now(self).style.font;
+            if (name == "size") {
+                if (font.size) ZVAL_DOUBLE(out, font.size->points());
+                else ZVAL_NULL(out);
+            } else if (name == "color") zval_of(font.color, out);
+            else if (name == "bold") ZVAL_BOOL(out, font.bold);
+            else return false;
             return true;
         }
         if (object->ce == row_class) {
@@ -601,14 +749,20 @@ namespace {
         } else if (name == "formula") {
             const auto text = self.sheet->contains(where) ? self.sheet->at(where).formula : std::string{};
             ZVAL_STRINGL(out, text.data(), text.size());
+        } else if (name == "style") {
+            make_part(out, style_class, self.owner, *self.sheet, self.row, self.column);
         } else return false;
         return true;
     }
 
     std::span<const std::string_view> property_names(const zend_object *object) {
-        static constexpr std::string_view sheet[] = {"name"}, row[] = {"index"}, cell[] = {"row", "column", "name", "value", "formula"};
+        static constexpr std::string_view sheet[] = {"name", "widths"}, row[] = {"index"},
+                                          cell[] = {"row", "column", "name", "value", "formula", "style"}, style[] = {"font", "background"},
+                                          font[] = {"size", "color", "bold"};
         if (object->ce == sheet_class) return sheet;
         if (object->ce == row_class) return row;
+        if (object->ce == style_class) return style;
+        if (object->ce == font_class) return font;
         return cell;
     }
 
@@ -623,12 +777,27 @@ namespace {
         const auto name = view(member);
         sc::php::guarded([&] {
             auto &self = *part_of(object);
-            if (object->ce != cell_class || !self.sheet || (name != "value" && name != "formula"))
-                throw std::logic_error{"SC\\Excel: " + std::string{ZSTR_VAL(object->ce->name)} + "'s '" + std::string{name} +
-                                       "' can't be set" + (object->ce == cell_class ? " (a cell's value and formula can)" : "")};
-            auto &cell = (*self.sheet)[{self.row, self.column}];
-            if (name == "value") cell = value_of(value);
-            else cell.formula = sc::php::text_of(value);
+            const auto refuse = [&](const char *settable) {
+                return std::logic_error{"SC\\Excel: " + std::string{ZSTR_VAL(object->ce->name)} + "'s '" + std::string{name} + "' can't be set" + settable};
+            };
+            if (!self.sheet) throw refuse("");
+            if (object->ce == cell_class) {
+                if (name == "value") cell_to_change(self) = value_of(value);
+                else if (name == "formula") cell_to_change(self).formula = sc::php::text_of(value);
+                else if (name == "style") cell_to_change(self).style = style_of(value);
+                else throw refuse(" (a cell's value, formula and style can)");
+            } else if (object->ce == style_class) {
+                if (name == "font") cell_to_change(self).style.font = font_of(value);
+                else if (name == "background") cell_to_change(self).style.background = color_of(value);
+                else throw refuse(" (a style's font and background can)");
+            } else if (object->ce == font_class) {
+                if (name == "size") cell_to_change(self).style.font.size = size_of(value);
+                else if (name == "color") cell_to_change(self).style.font.color = color_of(value);
+                else if (name == "bold") cell_to_change(self).style.font.bold = zend_is_true(value);
+                else throw refuse(" (a font's size, color and bold can)");
+            } else {
+                throw refuse("");
+            }
         });
         return value;
     }
@@ -682,7 +851,9 @@ namespace {
         sheet_class = register_class("SC\\Excel\\Sheet", sheet_methods, true);
         row_class = register_class("SC\\Excel\\Row", row_methods, true);
         cell_class = register_class("SC\\Excel\\Cell", cell_methods, false);
-        for (auto *each: {sheet_class, row_class, cell_class}) each->create_object = create_part;
+        style_class = register_class("SC\\Excel\\Style", cell_methods, false);
+        font_class = register_class("SC\\Excel\\Font", cell_methods, false);
+        for (auto *each: {sheet_class, row_class, cell_class, style_class, font_class}) each->create_object = create_part;
         std::memcpy(&part_handlers, zend_get_std_object_handlers(), sizeof(part_handlers));
         part_handlers.offset = XtOffsetOf(part_object, std);
         part_handlers.free_obj = free_part;

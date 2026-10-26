@@ -194,8 +194,9 @@ use SC\Exception;
 /**
  * An Excel workbook (.xlsx): its sheets in order, each holding the rows that have cells, each row
  * the cells that are set, with their values and formulas. Works like an array of sheets, found by
- * name ignoring case, as Excel does. Sheets, rows and cells are views into it (they keep it
- * alive): changing one changes the workbook. No formatting, styles, merged cells or pictures.
+ * name ignoring case, as Excel does. Sheets, rows, cells and their styles are views into it (they
+ * keep it alive): changing one changes the workbook. Cells have a style (font size, colour and
+ * bold; a background) and columns a width; no other formatting, merged cells or pictures.
  *
  *     $book = Workbook::open('prices.xlsx');
  *     foreach ($book as $sheet)
@@ -205,6 +206,9 @@ use SC\Exception;
  *     $out = new Workbook();
  *     $out['Prices']['A1'] = 'Item';          // the sheet added, as with an array
  *     $out['Prices']['B3']->formula = '=B2*2';
+ *     $out['Prices']['A1']->style->font->bold = true;
+ *     $out['Prices']['A1']->style->background = '#ddebf7';
+ *     $out['Prices']->width('A', 20);         // characters
  *     $out->save('out.xlsx');
  *
  * @implements \ArrayAccess<string, Sheet>
@@ -214,8 +218,8 @@ use SC\Exception;
 final class Workbook implements \ArrayAccess, \IteratorAggregate, \Countable
 {
     /**
-     * Every sheet's cells: values, and formulas with "=" (a formula Excel keeps once for a range
-     * is given to each cell, its relative references moved).
+     * Every sheet's cells: values, formulas with "=" (a formula Excel keeps once for a range is
+     * given to each cell, its relative references moved) and styles; the column widths set by hand.
      *
      * @throws Exception For a file that can't be read or isn't an .xlsx.
      */
@@ -233,8 +237,8 @@ final class Workbook implements \ArrayAccess, \IteratorAggregate, \Countable
     }
 
     /**
-     * Writes it as an .xlsx: each cell's value and formula, text inline, no styles. Excel
-     * calculates the formulas when it opens the file.
+     * Writes it as an .xlsx: each cell's value, formula and style, text inline, and the columns'
+     * widths. Excel calculates the formulas when it opens the file.
      *
      * @throws Exception For a workbook without sheets, a number that isn't finite, or a file that
      *     can't be written; no file is made then.
@@ -309,8 +313,22 @@ final class Sheet implements \ArrayAccess, \IteratorAggregate, \Countable
 {
     /** Its name. Read only. */
     public string $name;
+    /** @var array<int, float> The columns given a width, by number (from 0). Read only: see width(). */
+    public array $widths;
 
     private function __construct()
+    {
+    }
+
+    /**
+     * A column's width in characters (so many "0"s in the default font, as Excel shows it); null:
+     * Excel's default (8.43). With $characters, sets it first (from 0 to 255; null for the
+     * default): $sheet->width('B', 20).
+     *
+     * @param int|string $column A number from 0, or letters ("B").
+     * @throws Exception For a column beyond XFD or a width outside 0 to 255.
+     */
+    public function width(int|string $column, ?float $characters = null): ?float
     {
     }
 
@@ -330,8 +348,8 @@ final class Sheet implements \ArrayAccess, \IteratorAggregate, \Countable
     }
 
     /**
-     * Sets the cell's value (null, a number, text or a bool), or copies another cell's value and
-     * formula.
+     * Sets the cell's value (null, a number, text or a bool), keeping its formula and style, or
+     * copies another cell's value, formula and style.
      *
      * @throws Exception For any other value, or no cell named ($sheet[] = ...).
      */
@@ -401,8 +419,8 @@ final class Row implements \ArrayAccess, \IteratorAggregate, \Countable
 }
 
 /**
- * A cell of a sheet: its place, value and formula. Setting the value or formula of one that
- * isn't there yet adds it.
+ * A cell of a sheet: its place, value, formula and style. Setting the value, formula or style of
+ * one that isn't there yet adds it.
  */
 final class Cell
 {
@@ -420,6 +438,57 @@ final class Cell
     public float|string|bool|null $value;
     /** "=C6", with the "=", as Excel shows it; "" when there's none. */
     public string $formula;
+    /**
+     * How it looks. Set it to another cell's style, an array ['font' => ['size' => 14, 'color' =>
+     * '#1f4e79', 'bold' => true], 'background' => '#ddebf7'] (what's left out is the default), or
+     * null for the plain style; or change it a part at a time: $cell->style->font->bold = true.
+     */
+    public Style $style;
+
+    private function __construct()
+    {
+    }
+}
+
+/**
+ * A cell's style, a view into it: setting a part of it sets the cell's.
+ */
+final class Style
+{
+    /** The font. Set it to another cell's font, an array ['size' => ..., 'color' => ..., 'bold' => ...] or null. */
+    public Font $font;
+    /**
+     * A solid background: "#rrggbb" (any CSS colour when set: "#ddebf7", "#ff0", "yellow",
+     * "rgb(255, 255, 0)"), null for none. Theme colours read from a file come as what they are.
+     *
+     * @throws Exception For text that isn't a colour.
+     */
+    public ?string $background;
+
+    private function __construct()
+    {
+    }
+}
+
+/**
+ * A cell's font, a view into it. What isn't set is the workbook's default (Calibri, 11 points,
+ * automatic colour).
+ */
+final class Font
+{
+    /**
+     * In points, from 1 to 409; null for the default.
+     *
+     * @throws Exception For a size outside 1 to 409.
+     */
+    public ?float $size;
+    /**
+     * "#rrggbb" (any CSS colour when set), null for automatic.
+     *
+     * @throws Exception For text that isn't a colour.
+     */
+    public ?string $color;
+    public bool $bold;
 
     private function __construct()
     {

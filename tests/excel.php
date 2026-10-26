@@ -87,8 +87,61 @@ $sheet['E1'] = $sheet['B4'];
 check($back['Prices']['E1']->formula === '=SUM(B2:B3)', 'a cell assigned copies the value and formula');
 unset($sheet['E1']);
 check(!isset($sheet['E1']), 'unset() removes a cell');
-check(json_decode(json_encode($sheet['B2']), true) === ['row' => 1, 'column' => 1, 'name' => 'B2', 'value' => 18.5, 'formula' => ''],
+check(json_decode(json_encode($sheet['B2']), true) === ['row' => 1, 'column' => 1, 'name' => 'B2', 'value' => 18.5, 'formula' => '',
+      'style' => ['font' => ['size' => null, 'color' => null, 'bold' => false], 'background' => null]],
       'json_encode() shows a cell');
+
+// Styles: a part at a time, as an array, or another cell's; column widths.
+$styled = new Workbook();
+$s = $styled['Styled'];
+$s['A1'] = 'Header';
+$s['A1']->style->font->bold = true;
+$s['A1']->style->font->size = 14;
+$s['A1']->style->font->color = '#1F4E79';
+$s['A1']->style->background = 'yellow';
+check($s['A1']->style->font->bold && $s['A1']->style->font->size === 14.0, 'a font set a part at a time');
+check($s['A1']->style->font->color === '#1f4e79' && $s['A1']->style->background === '#ffff00', 'colours read back as #rrggbb');
+$s['B1']->style = ['font' => ['bold' => true, 'color' => 'red'], 'background' => '#ddebf7'];
+check(isset($s['B1']) && $s['B1']->value === null, 'a style alone adds the cell');
+check($s['B1']->style->font->size === null && $s['B1']->style->font->color === '#ff0000', 'what an array leaves out is the default');
+$s['C1']->style = $s['A1']->style;
+check($s['C1']->style->font->size === 14.0, "another cell's style");
+$s['C1']->style->font = ['size' => 9];
+check($s['C1']->style->font->size === 9.0 && !$s['C1']->style->font->bold && $s['C1']->style->background === '#ffff00', 'the font replaced, the background kept');
+$s['A2'] = 5;
+$s['A2']->style = $s['A1']->style;
+$s['A2'] = 6;
+check($s['A2']->style->font->bold, 'setting the value keeps the style');
+$s['D1'] = $s['A1'];
+check($s['D1']->value === 'Header' && $s['D1']->style->font->bold, "a cell assigned copies its style");
+$s['D1']->style = null;
+check(!$s['D1']->style->font->bold && $s['D1']->style->background === null, 'null: the plain style');
+$font = $s['A1']->style->font;
+$font->bold = false;
+check(!$s['A1']->style->font->bold, 'a Font kept is still a view into its cell');
+$font->bold = true;
+check(throws(function () use ($s) { $s['A1']->style->font->size = 500; }), 'a font size beyond 409 throws');
+check(throws(function () use ($s) { $s['A1']->style->font->color = 'reddish'; }), "text that isn't a colour throws");
+check(throws(function () use ($s) { $s['A1']->style = ['colour' => 'red']; }), 'a key a style lacks throws');
+check(throws(function () use ($s) { $s['A1']->style = 'bold'; }), 'a style that is text throws');
+check(throws(function () use ($s) { $s['A1']->style->font->italic = true; }), 'a property fonts lack throws');
+check($s->width('A') === null, 'a column without a width: null');
+check($s->width('A', 30) === 30.0 && $s->width(0) === 30.0, 'width() sets and reads, by letters or number');
+$s->width('B', 12.5);
+$s->width('C', 12.5);
+$s->width('E', 4);
+$s->width('E', null);
+check($s->widths === [0 => 30.0, 1 => 12.5, 2 => 12.5], 'widths by column number');
+check(throws(fn() => $s->width('A', 256)), 'a width beyond 255 throws');
+check(throws(fn() => $s->width('A1', 2)), "a column that isn't one throws");
+
+$again = Workbook::fromString($styled->output());
+$t = $again['Styled'];
+check($t['A1']->style->font->bold && $t['A1']->style->font->size === 14.0 && $t['A1']->style->font->color === '#1f4e79', 'the font read back');
+check($t['A1']->style->background === '#ffff00' && $t['B1']->style->background === '#ddebf7', 'backgrounds read back');
+check(isset($t['B1']), 'a cell with a style and no value read back');
+check($t['A2']->style->font->bold && $t['A2']->value === 6.0, 'value and style read back');
+check($t->widths === [0 => 30.0, 1 => 12.5, 2 => 12.5], 'widths read back');
 
 // Mistakes.
 check(throws(fn() => Workbook::open("$dir/missing.xlsx")), 'a missing file throws');
