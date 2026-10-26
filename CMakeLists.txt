@@ -25,8 +25,8 @@ find_or_install_package(sc-image simply-cpp-image-dev simply-cpp-image 5.4.0)
 find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 1.4.2)
 # SC\Pdf: existing PDFs read, merged, decorated and protected.
 find_or_install_package(sc-pdflite simply-cpp-pdflite-dev simply-cpp-pdflite 4.5.0)
-# SC\Excel: Excel workbooks read and written (erase() and bytes() since 1.2.0, styles and widths since 1.3.0, italic, underline and borders since 1.4.0, alignment and number formats since 1.5.0, merges and row heights since 1.6.0).
-find_or_install_package(sc-office simply-cpp-office-dev simply-cpp-office 1.6.0)
+# SC\Excel: Excel workbooks read and written (erase() and bytes() since 1.2.0, styles and widths since 1.3.0, italic, underline and borders since 1.4.0, alignment and number formats since 1.5.0, merges and row heights since 1.6.0, hidden columns and frozen panes since 1.7.0).
+find_or_install_package(sc-office simply-cpp-office-dev simply-cpp-office 1.7.0)
 
 ## PHP ##
 # An extension is built for one PHP version: the one each Ubuntu release ships (jammy 8.1, noble
@@ -116,4 +116,4 @@ set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONFLICTS "html2pdf-php")
 # The modules' packages are named, not left to dpkg-shlibdeps: on a build server the libraries it
 # links are the deploys' own copies in /usr/local/lib, which no package owns.
 package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common"
-        "simply-cpp (>= 1.20.0~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.4.2~)" "simply-cpp-pdflite (>= 4.5.0~)" "simply-cpp-office (>= 1.6.0~)")
+        "simply-cpp (>= 1.20.0~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.4.2~)" "simply-cpp-pdflite (>= 4.5.0~)" "simply-cpp-office (>= 1.7.0~)")

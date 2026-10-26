@@ -196,8 +196,8 @@ use SC\Exception;
  * the cells that are set, with their values and formulas. Works like an array of sheets, found by
  * name ignoring case, as Excel does. Sheets, rows, cells and their styles are views into it (they
  * keep it alive): changing one changes the workbook. Cells have a style (font size, colour, bold,
- * italic and underline; a background; borders; alignment; a number format), columns a width, rows
- * a height, and cells can be merged; no pictures.
+ * italic and underline; a background; borders; alignment; a number format), columns a width (or
+ * are hidden), rows a height, cells can be merged and panes frozen; no pictures.
  *
  *     $book = Workbook::open('prices.xlsx');
  *     foreach ($book as $sheet)
@@ -215,6 +215,8 @@ use SC\Exception;
  *     $out['Prices']->width('A', 20);         // characters
  *     $out['Prices']->height(0, 24);          // row 1, points
  *     $out['Prices']->merge('A1:D1');
+ *     $out['Prices']->hidden('E', true);
+ *     $out['Prices']->freeze('A2');           // row 1 stays in view
  *     $out->save('out.xlsx');
  *
  * @implements \ArrayAccess<string, Sheet>
@@ -325,6 +327,10 @@ final class Sheet implements \ArrayAccess, \IteratorAggregate, \Countable
     public array $heights;
     /** @var list<string> The merged ranges ("A1:D1"), in the order they were merged. Read only: see merge(). */
     public array $merged;
+    /** @var list<int> The hidden columns, by number (from 0). Read only: see hidden(). */
+    public array $hidden;
+    /** The cell the panes are frozen at ("B2"), null when they aren't. Read only: see freeze(). */
+    public ?string $frozen;
 
     private function __construct()
     {
@@ -375,6 +381,34 @@ final class Sheet implements \ArrayAccess, \IteratorAggregate, \Countable
      * @throws Exception For a range that isn't one.
      */
     public function unmerge(string|array $range): bool
+    {
+    }
+
+    /**
+     * Whether a column is hidden. With $hide, hides it first (true) or shows it again (false,
+     * keeping its width).
+     *
+     * @param int|string $column A number from 0, or letters ("E").
+     * @throws Exception For a column beyond XFD.
+     */
+    public function hidden(int|string $column, ?bool $hide = null): bool
+    {
+    }
+
+    /**
+     * Freezes the rows above the cell and the columns left of it, as Excel's Freeze Panes does
+     * there: 'B2' keeps row 1 and column A in view, 'A2' row 1 only, 'B1' column A only; 'A1'
+     * freezes nothing.
+     *
+     * @param string|array{int, int} $cell "B2", or [row, column] from 0.
+     * @throws Exception For a cell that isn't one.
+     */
+    public function freeze(string|array $cell): void
+    {
+    }
+
+    /** Unfreezes the panes. */
+    public function unfreeze(): void
     {
     }
 

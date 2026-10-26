@@ -20,6 +20,8 @@
 //     $out['Prices']->width('A', 20);         // characters
 //     $out['Prices']->height(0, 24);          // row 1, points
 //     $out['Prices']->merge('A1:D1');
+//     $out['Prices']->hidden('E', true);
+//     $out['Prices']->freeze('A2');           // row 1 stays in view
 //     $out->save('out.xlsx');                 // or $out->output(), the file as a string
 //
 // A Sheet, Row, Cell, Style, Font, Borders, Edge or Alignment is a view into its workbook (which it keeps alive), not a
@@ -788,7 +790,58 @@ namespace {
         RETURN_BOOL(removed);
     }
 
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_hidden, 0, 1, _IS_BOOL, 0)
+        ZEND_ARG_TYPE_MASK(0, column, MAY_BE_LONG | MAY_BE_STRING, NULL)
+        ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hide, _IS_BOOL, 1, "null")
+    ZEND_END_ARG_INFO()
+
+    // $sheet->hidden('E'): whether the column is hidden; $sheet->hidden('E', true) hides it, false
+    // shows it again (keeping its width). Either way it returns whether it's hidden.
+    ZEND_NAMED_FUNCTION(sheet_hidden) {
+        zval *column = nullptr;
+        bool hide = false, none = true;
+        ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_ZVAL(column)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_BOOL_OR_NULL(hide, none)
+        ZEND_PARSE_PARAMETERS_END();
+        bool hidden = false;
+        sc::php::guarded([&] {
+            auto &self = part(ZEND_THIS);
+            const auto index = column_of(column);
+            if (!none) self.sheet->hidden(index, hide);
+            hidden = self.sheet->hidden(index);
+        });
+        if (EG(exception)) RETURN_THROWS();
+        RETURN_BOOL(hidden);
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_freeze, 0, 1, IS_VOID, 0)
+        ZEND_ARG_TYPE_MASK(0, cell, MAY_BE_STRING | MAY_BE_ARRAY, NULL)
+    ZEND_END_ARG_INFO()
+
+    // $sheet->freeze('B2'): the rows above and the columns left of the cell stay in view, as Excel's
+    // Freeze Panes does there; 'A1' freezes nothing.
+    ZEND_NAMED_FUNCTION(sheet_freeze) {
+        zval *cell = nullptr;
+        ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(cell)
+        ZEND_PARSE_PARAMETERS_END();
+        sc::php::guarded([&] { part(ZEND_THIS).sheet->freeze(address_of(cell)); });
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_void, 0, 0, IS_VOID, 0)
+    ZEND_END_ARG_INFO()
+
+    ZEND_NAMED_FUNCTION(sheet_unfreeze) {
+        ZEND_PARSE_PARAMETERS_NONE();
+        sc::php::guarded([&] { part(ZEND_THIS).sheet->unfreeze(); });
+    }
+
     const zend_function_entry sheet_methods[] = {
+        ZEND_NAMED_ME(hidden, sheet_hidden, arginfo_hidden, ZEND_ACC_PUBLIC)
+        ZEND_NAMED_ME(freeze, sheet_freeze, arginfo_freeze, ZEND_ACC_PUBLIC)
+        ZEND_NAMED_ME(unfreeze, sheet_unfreeze, arginfo_void, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(width, sheet_width, arginfo_width, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(height, sheet_height, arginfo_height, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(merge, sheet_merge, arginfo_merge, ZEND_ACC_PUBLIC)
@@ -915,7 +968,7 @@ namespace {
         ZEND_FE_END
     };
 
-    // ---- properties: Sheet's name, widths, heights and merged, Row's index, Cell's row, column, name, value, formula
+    // ---- properties: Sheet's name, widths, heights, merged, hidden and frozen, Row's index, Cell's row, column, name, value, formula
     // and style, Style's font, background, borders, alignment and numberFormat, Font's size, color,
     // bold, italic and underline, Borders' left, right, top and bottom, Edge's line and color,
     // Alignment's horizontal, vertical, wrap and indent ----
@@ -933,6 +986,14 @@ namespace {
             } else if (name == "heights") { // by row number, in points
                 array_init(out);
                 for (const auto &[row, height]: self.sheet->heights()) add_index_double(out, static_cast<zend_ulong>(row), height.points());
+            } else if (name == "hidden") { // the hidden columns' numbers
+                array_init(out);
+                for (const auto column: self.sheet->hidden()) add_next_index_long(out, static_cast<zend_long>(column));
+            } else if (name == "frozen") { // "B2", or null
+                if (const auto &frozen = self.sheet->frozen()) {
+                    const auto text = frozen->name();
+                    ZVAL_STRINGL(out, text.data(), text.size());
+                } else ZVAL_NULL(out);
             } else if (name == "merged") { // "A1:D1" ...
                 array_init(out);
                 for (const auto &cells: self.sheet->merged()) {
@@ -1012,7 +1073,7 @@ namespace {
     }
 
     std::span<const std::string_view> property_names(const zend_object *object) {
-        static constexpr std::string_view sheet[] = {"name", "widths", "heights", "merged"}, row[] = {"index"},
+        static constexpr std::string_view sheet[] = {"name", "widths", "heights", "merged", "hidden", "frozen"}, row[] = {"index"},
                                           cell[] = {"row", "column", "name", "value", "formula", "style"},
                                           style[] = {"font", "background", "borders", "alignment", "numberFormat"},
                                           font[] = {"size", "color", "bold", "italic", "underline"}, edge[] = {"line", "color"},
