@@ -1,6 +1,6 @@
 // SC\Passkey: sc-passkey's sc::passkey::verifier, passkeys (WebAuthn) for a relying party.
 //
-//     $pk = new SC\Passkey('1web.co.za', '1Web', ['https://*.1web.co.za']);
+//     $pk = new SC\Passkey('example.com', 'Example', ['https://*.example.com']);
 //     $options = $pk->registrationOptions($userId, 'roelof', 'Roelof', $existingIds);
 //     // json_encode($options) to the browser (sc-passkey.js), $options['challenge'] kept
 //     $made = $pk->verifyRegistration($answerJson, $challenge);   // ['id' => ..., 'publicKey' => ...]

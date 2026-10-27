@@ -217,7 +217,7 @@ class PasskeyException extends Exception
  * scPasskey.get(options)) turns the options into a call and the answer into the JSON to send back,
  * also where the browser lacks PublicKeyCredential.toJSON().
  *
- *     $pk = new \SC\Passkey('1web.co.za', '1Web', ['https://*.1web.co.za']);
+ *     $pk = new \SC\Passkey('example.com', 'Example', ['https://*.example.com']);
  *     $options = $pk->registrationOptions($userId, $login, $name, $idsOfTheirPasskeys);
  *     // keep $options['challenge']; json_encode($options) to scPasskey.create()
  *     $made = $pk->verifyRegistration($answerJson, $challenge);      // store $made
@@ -232,10 +232,10 @@ class PasskeyException extends Exception
 final class Passkey
 {
     /**
-     * @param string $rpId The relying party's ID: a domain, "1web.co.za".
+     * @param string $rpId The relying party's ID: a domain, "example.com".
      * @param string $rpName Its name, as authenticators may show it.
-     * @param string[] $origins Where the pages are: exact ("https://www.1web.co.za") or a wildcard
-     *     ("https://*.1web.co.za": https, any subdomain depth, not the bare domain); each the RP ID
+     * @param string[] $origins Where the pages are: exact ("https://www.example.com") or a wildcard
+     *     ("https://*.example.com": https, any subdomain depth, not the bare domain); each the RP ID
      *     or under it, no ports or paths.
      * @throws Exception For an RP ID or origin that isn't one.
      */

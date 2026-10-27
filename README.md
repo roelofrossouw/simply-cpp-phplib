@@ -32,7 +32,7 @@ SC\Pdf::protect('/tmp/invoice.pdf', '/tmp/invoice.pdf', ['owner_password' => $se
 SC\Pdf::pageCount('/tmp/invoice.pdf');
 
 // Passkeys (sc-passkey, WebAuthn): options for the browser (sc-passkey.js), every check of its answers
-$pk = new SC\Passkey('1web.co.za', '1Web', ['https://*.1web.co.za']);
+$pk = new SC\Passkey('example.com', 'Example', ['https://*.example.com']);
 $options = $pk->registrationOptions($userId, 'roelof', 'Roelof', $theirPasskeyIds);   // json_encode() it; keep ['challenge']
 $made = $pk->verifyRegistration($answerJson, $challenge);       // id, publicKey, signCount, aaguid, ...: keep it
 $used = $pk->verifyAuthentication($answerJson, $challenge, $made['publicKey'], $made['signCount']);

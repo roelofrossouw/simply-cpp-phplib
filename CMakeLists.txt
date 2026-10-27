@@ -27,7 +27,7 @@ find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 
 find_or_install_package(sc-pdflite simply-cpp-pdflite-dev simply-cpp-pdflite 4.5.0)
 # SC\Excel: Excel workbooks read and written (erase() and bytes() since 1.2.0, styles and widths since 1.3.0, italic, underline and borders since 1.4.0, alignment and number formats since 1.5.0, merges and row heights since 1.6.0, hidden columns and frozen panes since 1.7.0, hidden rows and strike since 1.8.0, rotation and diagonals since 1.9.0).
 find_or_install_package(sc-office simply-cpp-office-dev simply-cpp-office 1.9.0)
-# SC\Passkey: passkeys (WebAuthn) for a relying party, One Web's second factor.
+# SC\Passkey: passkeys (WebAuthn) for a relying party.
 find_or_install_package(sc-passkey simply-cpp-passkey-dev simply-cpp-passkey 1.0.0)
 
 ## PHP ##
