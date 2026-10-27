@@ -60,4 +60,5 @@ namespace sc::php {
     area html2pdf_area();
     area pdf_area();
     area excel_area();
+    area passkey_area();
 }

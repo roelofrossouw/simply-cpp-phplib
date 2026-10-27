@@ -187,6 +187,146 @@ function base64_decode(string $data): string
 {
 }
 
+/**
+ * What a passkey check that fails throws: the response isn't what the relying party asked for, or
+ * isn't a valid one. getReason() names the check for code; getMessage() says it in a sentence.
+ *
+ * @link https://github.com/roelofrossouw/simply-cpp/wiki/PHP
+ */
+class PasskeyException extends Exception
+{
+    /**
+     * Which check failed: "format" (not a response, or malformed), "type", "credential" (ids that
+     * differ or aren't 1 to 1023 bytes), "challenge", "origin", "cross_origin", "rp_id",
+     * "user_presence", "user_verification", "flags" (backed up without being eligible),
+     * "algorithm", "key", "signature" or "counter" (the sign count went back: maybe a clone).
+     */
+    public function getReason(): string
+    {
+    }
+}
+
+/**
+ * Passkeys (WebAuthn Level 3) for a relying party: the options navigator.credentials.create() and
+ * get() take, and every check of what the browser answers. The caller keeps the challenge (say, in
+ * Redis) and the credentials (id, public key, sign count); this does the CBOR, COSE keys and
+ * signatures (ES256, EdDSA with Ed25519, RS256). Attestation is "none": any format is taken, its
+ * statement not checked. Ids, keys and challenges are base64url text.
+ *
+ * In the browser, /usr/share/simply-cpp-passkey/sc-passkey.js (scPasskey.create(options),
+ * scPasskey.get(options)) turns the options into a call and the answer into the JSON to send back,
+ * also where the browser lacks PublicKeyCredential.toJSON().
+ *
+ *     $pk = new \SC\Passkey('1web.co.za', '1Web', ['https://*.1web.co.za']);
+ *     $options = $pk->registrationOptions($userId, $login, $name, $idsOfTheirPasskeys);
+ *     // keep $options['challenge']; json_encode($options) to scPasskey.create()
+ *     $made = $pk->verifyRegistration($answerJson, $challenge);      // store $made
+ *
+ *     $options = $pk->authenticationOptions($idsOfTheirPasskeys);    // to scPasskey.get()
+ *     $stored = ...;                                                  // by \SC\Passkey::credentialId($answerJson)
+ *     $used = $pk->verifyAuthentication($answerJson, $challenge, $stored['publicKey'], $stored['signCount']);
+ *     // store $used['signCount']
+ *
+ * @link https://github.com/roelofrossouw/simply-cpp/wiki/PHP
+ */
+final class Passkey
+{
+    /**
+     * @param string $rpId The relying party's ID: a domain, "1web.co.za".
+     * @param string $rpName Its name, as authenticators may show it.
+     * @param string[] $origins Where the pages are: exact ("https://www.1web.co.za") or a wildcard
+     *     ("https://*.1web.co.za": https, any subdomain depth, not the bare domain); each the RP ID
+     *     or under it, no ports or paths.
+     * @throws Exception For an RP ID or origin that isn't one.
+     */
+    public function __construct(string $rpId, string $rpName, array $origins)
+    {
+    }
+
+    /**
+     * Options for navigator.credentials.create() (PublicKeyCredentialCreationOptionsJSON), with a
+     * fresh challenge to keep for verifyRegistration(). Algorithms ES256, EdDSA, RS256 in that
+     * order; resident key "preferred"; attestation "none".
+     *
+     * @param string $userId Opaque bytes, 1 to 64 (not an e-mail address: authenticators show the names, not this).
+     * @param string $userName The account's name, as authenticators show it.
+     * @param string $displayName A friendlier name; the user name when empty.
+     * @param array<string|array{id: string, transports?: string[]}> $exclude The user's passkeys
+     *     already: base64url ids, or with their transports.
+     * @param int $timeout In milliseconds, 1000 to 3600000.
+     * @param 'required'|'preferred'|'discouraged' $userVerification
+     * @return array{rp: array{id: string, name: string}, user: array{id: string, name: string, displayName: string},
+     *     challenge: string, pubKeyCredParams: list<array{type: string, alg: int}>, timeout: int,
+     *     excludeCredentials: list<array{type: string, id: string, transports?: string[]}>,
+     *     authenticatorSelection: array{residentKey: string, requireResidentKey: bool, userVerification: string}, attestation: string}
+     * @throws Exception For a user id that isn't 1 to 64 bytes, an empty user name, or a timeout or user verification that isn't one.
+     */
+    public function registrationOptions(string $userId, string $userName, string $displayName = '', array $exclude = [], int $timeout = 300000, string $userVerification = 'preferred'): array
+    {
+    }
+
+    /**
+     * Options for navigator.credentials.get() (PublicKeyCredentialRequestOptionsJSON), with a fresh
+     * challenge to keep for verifyAuthentication().
+     *
+     * @param array<string|array{id: string, transports?: string[]}> $allow The passkeys it may use
+     *     (none: any discoverable one).
+     * @param int $timeout In milliseconds, 1000 to 3600000.
+     * @param 'required'|'preferred'|'discouraged' $userVerification
+     * @return array{challenge: string, timeout: int, rpId: string, allowCredentials: list<array{type: string, id: string, transports?: string[]}>, userVerification: string}
+     * @throws Exception For a timeout or user verification that isn't one.
+     */
+    public function authenticationOptions(array $allow = [], int $timeout = 300000, string $userVerification = 'preferred'): array
+    {
+    }
+
+    /**
+     * The browser's answer to registrationOptions() (RegistrationResponseJSON, what scPasskey.create()
+     * gives), checked against the kept challenge: what to keep for the passkey.
+     *
+     * @param string $response The JSON.
+     * @param string $challenge The kept options' challenge.
+     * @param bool $requireUserVerification Refuse it when the user wasn't verified (PIN, biometrics).
+     * @return array{id: string, publicKey: string, algorithm: int, signCount: int, aaguid: string,
+     *     transports: string[], attachment: string, attestationFormat: string, userVerified: bool,
+     *     backupEligible: bool, backedUp: bool} publicKey is the COSE key, base64url, to pass back
+     *     unchanged; aaguid a UUID (all zeros when the authenticator gives none).
+     * @throws PasskeyException For a check that fails.
+     * @throws Exception For a challenge that isn't base64url.
+     */
+    public function verifyRegistration(string $response, string $challenge, bool $requireUserVerification = false): array
+    {
+    }
+
+    /**
+     * The browser's answer to authenticationOptions() (AuthenticationResponseJSON, what
+     * scPasskey.get() gives), checked against the kept challenge and the passkey's kept public key
+     * and sign count: keep its new signCount. A sign count that went back (both non-zero, the new
+     * one not above the kept one) is refused ("counter"); 0 and 0 is what synced passkeys send.
+     *
+     * @param string $response The JSON.
+     * @param string $challenge The kept options' challenge.
+     * @param string $publicKey The passkey's publicKey, as verifyRegistration() gave it.
+     * @param int $signCount Its sign count as kept.
+     * @param bool $requireUserVerification Refuse it when the user wasn't verified.
+     * @return array{id: string, userHandle: ?string, signCount: int, userVerified: bool, backupEligible: bool, backedUp: bool}
+     * @throws PasskeyException For a check that fails.
+     * @throws Exception For a challenge or public key that isn't what was kept (not base64url, not a COSE key).
+     */
+    public function verifyAuthentication(string $response, string $challenge, string $publicKey, int $signCount, bool $requireUserVerification = false): array
+    {
+    }
+
+    /**
+     * The passkey an answer is for (its base64url id), to look its public key up before verifying.
+     *
+     * @throws PasskeyException ("format") For JSON that isn't an answer.
+     */
+    public static function credentialId(string $response): string
+    {
+    }
+}
+
 namespace SC\Excel;
 
 use SC\Exception;

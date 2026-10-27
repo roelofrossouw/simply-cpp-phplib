@@ -1,7 +1,7 @@
 # simply-cpp-phplib
 
 The `sc` PHP extension: simply-cpp's libraries for PHP, in the `SC` namespace. It's a thin
-wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-image, sc-core),
+wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-passkey, sc-image, sc-core),
 which its package depends on. Apache-2.0, as everything it links is (no AGPL modules).
 
 ```php
@@ -30,6 +30,13 @@ SC\Pdf::decorate('/tmp/invoice.pdf', $letterhead, '/tmp/invoice.pdf'); // its pa
 SC\Pdf::protect('/tmp/invoice.pdf', '/tmp/invoice.pdf', ['owner_password' => $secret,
                  'permissions' => ['annotate' => true]]);          // print and annotate, nothing else
 SC\Pdf::pageCount('/tmp/invoice.pdf');
+
+// Passkeys (sc-passkey, WebAuthn): options for the browser (sc-passkey.js), every check of its answers
+$pk = new SC\Passkey('1web.co.za', '1Web', ['https://*.1web.co.za']);
+$options = $pk->registrationOptions($userId, 'roelof', 'Roelof', $theirPasskeyIds);   // json_encode() it; keep ['challenge']
+$made = $pk->verifyRegistration($answerJson, $challenge);       // id, publicKey, signCount, aaguid, ...: keep it
+$used = $pk->verifyAuthentication($answerJson, $challenge, $made['publicKey'], $made['signCount']);
+// a failed check: SC\PasskeyException, getReason() 'origin', 'challenge', 'signature', 'counter', ...
 
 // Excel workbooks (sc-office): sheets of cells with their values and formulas, read and written
 $book = SC\Excel\Workbook::open('prices.xlsx');        // or ::fromString($bytes)
