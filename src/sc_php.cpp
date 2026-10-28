@@ -12,7 +12,7 @@ namespace sc::php {
     namespace {
         // The extension's parts: a new one is a file and a line here.
         const std::vector<area> &areas() {
-            static const std::vector<area> all{base64_area(), svg_area(), html2pdf_area(), pdf_area(), excel_area(), passkey_area()};
+            static const std::vector<area> all{base64_area(), svg_area(), html2pdf_area(), pdf_area(), excel_area(), passkey_area(), bootstrap_email_area()};
             return all;
         }
 

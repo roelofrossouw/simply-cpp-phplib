@@ -327,6 +327,29 @@ final class Passkey
     }
 }
 
+/**
+ * Bootstrap 5 HTML made into HTML email clients show as intended: the layout as tables, the CSS in each
+ * element's style attribute (and bgcolor, align and valign), a stylesheet in the head for what can't be
+ * inlined. sc-bootstrap-email, a C++ port of bootstrap-email (https://bootstrapemail.com) 1.8.1, which
+ * gives what its Ruby gem's command gives, in the PHP process.
+ *
+ *     $html = \SC\BootstrapEmail::format('<body class="bg-light"><div class="container">...</div></body>');
+ *
+ * @link https://github.com/roelofrossouw/simply-cpp/wiki/PHP
+ */
+final class BootstrapEmail
+{
+    /**
+     * The email's HTML: a whole page keeps its head; a <body> alone gets bootstrap-email's layout.
+     * The page's own <style> tags are inlined and taken out (unless data-premailer="ignore").
+     *
+     * @throws Exception When the HTML can't be read at all.
+     */
+    public static function format(string $html): string
+    {
+    }
+}
+
 namespace SC\Excel;
 
 use SC\Exception;

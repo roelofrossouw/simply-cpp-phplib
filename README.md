@@ -1,7 +1,7 @@
 # simply-cpp-phplib
 
 The `sc` PHP extension: simply-cpp's libraries for PHP, in the `SC` namespace. It's a thin
-wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-passkey, sc-image, sc-core),
+wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-passkey, sc-bootstrap-email, sc-image, sc-core),
 which its package depends on. Apache-2.0, as everything it links is (no AGPL modules).
 
 ```php
@@ -37,6 +37,9 @@ $options = $pk->registrationOptions($userId, 'roelof', 'Roelof', $theirPasskeyId
 $made = $pk->verifyRegistration($answerJson, $challenge);       // id, publicKey, signCount, aaguid, ...: keep it
 $used = $pk->verifyAuthentication($answerJson, $challenge, $made['publicKey'], $made['signCount']);
 // a failed check: SC\PasskeyException, getReason() 'origin', 'challenge', 'signature', 'counter', ...
+
+// Email HTML (sc-bootstrap-email, bootstrap-email ported): Bootstrap's classes as tables and inlined CSS
+$html = SC\BootstrapEmail::format('<body><div class="container"><a class="btn btn-primary" href="...">Open</a></div></body>');
 
 // Excel workbooks (sc-office): sheets of cells with their values and formulas, read and written
 $book = SC\Excel\Workbook::open('prices.xlsx');        // or ::fromString($bytes)
