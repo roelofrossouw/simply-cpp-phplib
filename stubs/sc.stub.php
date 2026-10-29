@@ -350,6 +350,83 @@ final class BootstrapEmail
     }
 }
 
+/**
+ * A QR code made from text or bytes, written as SVG or PNG with no image library (sc-qrencode, on
+ * Project Nayuki's QR Code generator). The smallest version that holds the data is chosen, then the
+ * highest correction level that still fits, at least the one asked for.
+ *
+ *     $qr = new \SC\QrCode('https://example.com/invoice/123');
+ *     $svg = $qr->svg(30);   // 30 mm square
+ *     $png = $qr->png(8);    // 8 pixels a module
+ *
+ * @link https://github.com/roelofrossouw/simply-cpp/wiki/PHP
+ */
+final class QrCode
+{
+    /**
+     * @param string $text UTF-8; digits and upper-case letters are packed tighter.
+     * @param 'low'|'medium'|'quartile'|'high' $correction How much damage it survives: about 7, 15, 25
+     *     or 30% of the code.
+     * @throws Exception When it doesn't fit (2953 bytes at 'low'), the text holds a NUL, or the
+     *     correction is none of those.
+     */
+    public function __construct(string $text, string $correction = 'medium')
+    {
+    }
+
+    /**
+     * Bytes as they are, for data that isn't text.
+     *
+     * @param 'low'|'medium'|'quartile'|'high' $correction
+     * @throws Exception As the constructor.
+     */
+    public static function binary(string $bytes, string $correction = 'medium'): QrCode
+    {
+    }
+
+    /**
+     * The dark modules as one path on a white square, with a quiet zone of light modules around.
+     *
+     * @param float|null $size The picture's width and height in mm, quiet zone included; null for a
+     *     viewBox only, so it takes the size it's shown at.
+     * @param int $quietZone 4 modules, as the standard asks.
+     * @throws Exception For a size that isn't positive, or a quiet zone outside 0 to 100.
+     */
+    public function svg(?float $size = null, int $quietZone = 4): string
+    {
+    }
+
+    /**
+     * Black and white, 1 bit a pixel, each module an exact block of pixels.
+     *
+     * @param int $modulePixels 1 to 100.
+     * @throws Exception For other sizes, or a quiet zone outside 0 to 100.
+     */
+    public function png(int $modulePixels = 8, int $quietZone = 4): string
+    {
+    }
+
+    /** 1 to 40. */
+    public function version(): int
+    {
+    }
+
+    /** Modules a side, without the quiet zone: 21 to 177. */
+    public function size(): int
+    {
+    }
+
+    /** @return 'low'|'medium'|'quartile'|'high' The level used, at least the one asked for. */
+    public function correction(): string
+    {
+    }
+
+    /** Whether a module is dark, counted from the top left; outside the code, false. */
+    public function dark(int $x, int $y): bool
+    {
+    }
+}
+
 namespace SC\Excel;
 
 use SC\Exception;

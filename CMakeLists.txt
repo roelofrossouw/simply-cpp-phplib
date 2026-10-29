@@ -31,6 +31,8 @@ find_or_install_package(sc-office simply-cpp-office-dev simply-cpp-office 1.9.0)
 find_or_install_package(sc-passkey simply-cpp-passkey-dev simply-cpp-passkey 1.0.0)
 # SC\BootstrapEmail: Bootstrap HTML made into email HTML.
 find_or_install_package(sc-bootstrap-email simply-cpp-bootstrap-email-dev simply-cpp-bootstrap-email 1.0.0)
+# SC\QrCode: QR codes as SVG or PNG.
+find_or_install_package(sc-qrencode simply-cpp-qrencode-dev simply-cpp-qrencode 1.0.0)
 
 ## PHP ##
 # An extension is built for one PHP version: the one each Ubuntu release ships (jammy 8.1, noble
@@ -67,10 +69,10 @@ message(STATUS "Building for PHP ${SC_PHPLIB_PHP_VERSION} (module API ${SC_PHPLI
 # sc.so, loaded by PHP with dlopen(): no "lib" prefix, no link against PHP (its symbols resolve at
 # load time; macOS needs that said). It links the modules' shared libraries themselves, not their
 # CMake targets, which would also bring the static libraries under them into it.
-add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/passkey.cpp src/bootstrap_email.cpp src/php_glue.h)
+add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/passkey.cpp src/bootstrap_email.cpp src/qr_code.cpp src/php_glue.h)
 target_compile_options(sc PRIVATE ${SC_PHPLIB_PHP_INCLUDES})
 target_compile_definitions(sc PRIVATE SC_PHPLIB_VERSION="${SC_VERSION}")
-foreach (module sc-core sc-image sc-html2pdf sc-pdflite sc-office sc-passkey sc-bootstrap-email)
+foreach (module sc-core sc-image sc-html2pdf sc-pdflite sc-office sc-passkey sc-bootstrap-email sc-qrencode)
     target_link_libraries(sc PRIVATE $<TARGET_LINKER_FILE:sc::${module}-shared>)
     target_include_directories(sc PRIVATE $<TARGET_PROPERTY:sc::${module}-shared,INTERFACE_INCLUDE_DIRECTORIES>)
 endforeach ()
@@ -121,4 +123,4 @@ set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONFLICTS "html2pdf-php")
 # links are the deploys' own copies in /usr/local/lib, which no package owns.
 package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common"
         "simply-cpp (>= 1.20.0~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.4.2~)" "simply-cpp-pdflite (>= 4.5.0~)" "simply-cpp-office (>= 1.9.0~)" "simply-cpp-passkey (>= 1.0.0~)"
-        "simply-cpp-bootstrap-email (>= 1.0.0~)")
+        "simply-cpp-bootstrap-email (>= 1.0.0~)" "simply-cpp-qrencode (>= 1.0.0~)")

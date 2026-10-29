@@ -1,7 +1,7 @@
 # simply-cpp-phplib
 
 The `sc` PHP extension: simply-cpp's libraries for PHP, in the `SC` namespace. It's a thin
-wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-passkey, sc-bootstrap-email, sc-image, sc-core),
+wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-passkey, sc-bootstrap-email, sc-qrencode, sc-image, sc-core),
 which its package depends on. Apache-2.0, as everything it links is (no AGPL modules).
 
 ```php
@@ -40,6 +40,12 @@ $used = $pk->verifyAuthentication($answerJson, $challenge, $made['publicKey'], $
 
 // Email HTML (sc-bootstrap-email, bootstrap-email ported): Bootstrap's classes as tables and inlined CSS
 $html = SC\BootstrapEmail::format('<body><div class="container"><a class="btn btn-primary" href="...">Open</a></div></body>');
+
+// QR codes (sc-qrencode): SVG or PNG, no image library
+$qr = new SC\QrCode('https://example.com/invoice/123');  // correction 'medium'; 'low', 'quartile', 'high'
+$svg = $qr->svg(30);                    // 30 mm square; svg() alone has a viewBox only and scales
+$png = $qr->png(8);                     // 8 pixels a module, 1 bit a pixel
+$qr->version(); $qr->size(); $qr->dark($x, $y);           // and SC\QrCode::binary($bytes)
 
 // Excel workbooks (sc-office): sheets of cells with their values and formulas, read and written
 $book = SC\Excel\Workbook::open('prices.xlsx');        // or ::fromString($bytes)
