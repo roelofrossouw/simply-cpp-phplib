@@ -27,6 +27,11 @@ class Exception extends \Exception
  * per page; a header's #P1Head shows on the first page only and #POHead on the others. In the
  * content <section> starts a new page and an entry in the table of contents.
  *
+ * An image whose src starts with qr: is a QR code of what follows, drawn as vector shapes (sharp
+ * at any size), written like a data: URI: qr:[correction=L|M|Q|H][;margin=N][;base64],<data>, as
+ * in <img src="qr:,https://example.com/pay/123" style="width: 30mm">. It works in the header and
+ * footer too; data too long for a QR code throws.
+ *
  * @link https://github.com/roelofrossouw/simply-cpp/wiki/HTML-to-PDF
  */
 class Html2Pdf

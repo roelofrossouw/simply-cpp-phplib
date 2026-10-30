@@ -81,6 +81,33 @@ The options are [sc::html2pdf's](https://github.com/roelofrossouw/simply-cpp-htm
 (`media`, `toc_title`, `outline`, `split_boxes` and `draw_margins` too); one it doesn't know
 throws, so a typo shows. Every failure is an `SC\Exception` (an `Exception`).
 
+**QR codes in the HTML**: an image whose `src` starts with `qr:` is a QR code of what follows,
+drawn as vector shapes, so it prints sharp at any size and adds no picture to the PDF. It's
+written like a data: URI, `qr:[correction=L|M|Q|H][;margin=N][;base64],<data>`; size it with CSS:
+
+```php
+$link = 'https://example.com/pay/' . $invoice;
+$html = '<p>Pay online: <img src="qr:,' . htmlspecialchars($link) . '" style="width: 30mm"></p>'
+      . '<img src="qr:correction=H;margin=2,' . rawurlencode($ticket) . '" style="width: 20mm">'
+      . '<img src="qr:base64,' . base64_encode($bytes) . '" style="width: 25mm">';
+$pdf = new SC\Html2Pdf($html, ['footer' => '<img src="qr:,https://example.com" style="width: 12mm">']);
+```
+
+- The data is everything after the first comma (without a comma, everything after `qr:`). It's
+  percent-decoded as a URL is, so `rawurlencode()` text that has `%`, `"` or other characters
+  HTML or URLs give a meaning; `base64` takes it as base64 instead, for bytes.
+- `correction` is how much of the code may be damaged and still read: `L` about 7%, `M` (the
+  default) 15%, `Q` 25%, `H` 30%; a higher level makes a denser code. `low`, `medium`,
+  `quartile` and `high` work too.
+- `margin` is the light border around the code in modules, 0 to 100 (4 by default, as the
+  standard asks; scanners want some).
+- Without a CSS size it's 4 pixels a module. Give it a width (`30mm`); the height follows.
+- It works in the header and footer too, and the same code drawn on every page is made once.
+- A setting it doesn't know, no data, or more data than a QR code holds (about 2,300 characters
+  of text at `M`) throws an `SC\Exception`, so a bad code never reaches the page.
+
+For a QR code outside a PDF (an `<img>` on a web page, a PNG to send), use `SC\QrCode` below.
+
 `SC\Excel\Workbook`, `Sheet` and `Row` are `ArrayAccess`, `IteratorAggregate` and `Countable`, like
 sc-office's C++ classes: sheets are found by name ignoring case, cells by name (`"B3"`) or
 `[row, column]` from 0, a row's cells by column number or letters (`$row['B']`). A `Cell` has
