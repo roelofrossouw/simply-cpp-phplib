@@ -23,6 +23,7 @@ $pdf->pageCount();
 $pdf->save('/tmp/invoice.pdf');
 header('Content-Type: application/pdf');
 echo $pdf->output();                    // the PDF as a string
+// <img src="qr:,https://example.com/pay/123" style="width: 30mm"> in the HTML is a QR code, drawn sharp
 
 // Existing PDFs written again (sc-pdflite): merged, decorated, protected; any PDF, encrypted or damaged
 SC\Pdf::merge(['/tmp/invoice.pdf', $appendix, 'photo.jpg'], '/tmp/invoice.pdf');  // into the first one; a JPEG or PNG a page
