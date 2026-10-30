@@ -26,10 +26,18 @@
 //
 // A Sheet, Row, Cell, Style, Font, Borders, Edge or Alignment is a view into its workbook (which it keeps alive), not a
 // copy: changing it changes the workbook. Every failure is an SC\Exception.
+//
+// SC\Csv reads CSV files into the same SC\Excel\Sheet and writes any sheet's values as CSV (sc::office::csv), so
+// code that only uses data works the same on both:
+//
+//     $prices = SC\Csv::open('prices.csv');          // , or ; found by itself
+//     $total = $prices['B2']->value;
+//     SC\Csv::save($book['Prices'], 'prices.csv');    // an Excel sheet's values
 
 #include "php_glue.h"
 
 #include <excel.h>
+#include <sc_csv.h>
 
 #include <ext/spl/spl_array.h>
 #include <zend_interfaces.h>
@@ -1224,6 +1232,173 @@ namespace {
         return out;
     }
 
+    // ---- SC\Csv ----
+
+    // A Csv method's options: delimiter (one character; "" finds it), typed, bom.
+    sc::office::csv::options csv_options(HashTable *given) {
+        sc::office::csv::options how;
+        if (!given) return how;
+        zend_string *key = nullptr;
+        zval *value = nullptr;
+        ZEND_HASH_FOREACH_STR_KEY_VAL(given, key, value) {
+            const std::string_view name = key ? view(key) : std::string_view{};
+            if (name == "delimiter") {
+                const auto text = sc::php::text_of(value);
+                if (text.size() > 1) throw std::invalid_argument{"SC\\Csv: the delimiter is one character, or \"\" to find it"};
+                how.delimiter = text.empty() ? '\0' : text[0];
+            } else if (name == "typed") {
+                how.typed = zend_is_true(value);
+            } else if (name == "bom") {
+                how.byte_order_mark = zend_is_true(value);
+            } else {
+                throw std::invalid_argument{"SC\\Csv: unknown option '" + std::string{key ? name : "(a number)"} + "' (delimiter, typed, bom)"};
+            }
+        } ZEND_HASH_FOREACH_END();
+        return how;
+    }
+
+    // values as a new workbook's one sheet (named name, or "Sheet1" when Excel won't take it), into out.
+    void sheet_of(zval *out, const sc::office::csv::sheet &values, const std::string &name) {
+        zval book;
+        object_init_ex(&book, workbook_class);
+        excel::sheet *sheet = nullptr;
+        sc::php::guarded([&] {
+            auto &into = *workbook_of(Z_OBJ(book))->book;
+            try {
+                sheet = &into.add(name.empty() ? std::string{"Sheet1"} : name);
+            } catch (const std::invalid_argument &) {
+                sheet = &into.add("Sheet1");
+            }
+            for (const auto &row: values)
+                for (const auto &cell: row) (*sheet)[{cell.row, cell.column}] = cell.value;
+        });
+        if (!EG(exception)) make_part(out, sheet_class, Z_OBJ(book), *sheet);
+        zval_ptr_dtor(&book);
+    }
+
+    // The Sheet given, or an SC\Exception.
+    const excel::sheet *sheet_given(zval *given) {
+        const auto *from = given_part(given, sheet_class);
+        if (!from) zend_throw_exception(sc::php::exception_class, "SC\\Csv: give a sheet from a workbook, or from SC\\Csv::open()", 0);
+        return from ? from->sheet : nullptr;
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_csv_open, 0, 1, SC\\Excel\\Sheet, 0)
+        ZEND_ARG_TYPE_INFO(0, filename, IS_STRING, 0)
+        ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, options, IS_ARRAY, 0, "[]")
+    ZEND_END_ARG_INFO()
+
+    ZEND_NAMED_FUNCTION(csv_open) {
+        zend_string *filename = nullptr;
+        HashTable *given = nullptr;
+        ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_STR(filename)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_ARRAY_HT(given)
+        ZEND_PARSE_PARAMETERS_END();
+        sc::office::csv::sheet values;
+        sc::php::guarded([&] { values = sc::office::csv::read(std::string{view(filename)}, csv_options(given)); });
+        if (EG(exception)) RETURN_THROWS();
+        sheet_of(return_value, values, values.name());
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_csv_from_string, 0, 1, SC\\Excel\\Sheet, 0)
+        ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
+        ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, options, IS_ARRAY, 0, "[]")
+    ZEND_END_ARG_INFO()
+
+    ZEND_NAMED_FUNCTION(csv_from_string) {
+        zend_string *text = nullptr;
+        HashTable *given = nullptr;
+        ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_STR(text)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_ARRAY_HT(given)
+        ZEND_PARSE_PARAMETERS_END();
+        sc::office::csv::sheet values;
+        sc::php::guarded([&] { values = sc::office::csv::read_from(view(text), csv_options(given)); });
+        if (EG(exception)) RETURN_THROWS();
+        sheet_of(return_value, values, "Sheet1");
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_csv_create, 0, 0, SC\\Excel\\Sheet, 0)
+        ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, name, IS_STRING, 0, "\"Sheet1\"")
+    ZEND_END_ARG_INFO()
+
+    // An empty sheet, to fill and save as CSV.
+    ZEND_NAMED_FUNCTION(csv_create) {
+        zend_string *name = nullptr;
+        ZEND_PARSE_PARAMETERS_START(0, 1)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_STR(name)
+        ZEND_PARSE_PARAMETERS_END();
+        sheet_of(return_value, sc::office::csv::sheet{}, name ? std::string{view(name)} : std::string{"Sheet1"});
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_csv_save, 0, 2, IS_VOID, 0)
+        ZEND_ARG_OBJ_INFO(0, sheet, SC\\Excel\\Sheet, 0)
+        ZEND_ARG_TYPE_INFO(0, filename, IS_STRING, 0)
+        ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, options, IS_ARRAY, 0, "[]")
+    ZEND_END_ARG_INFO()
+
+    ZEND_NAMED_FUNCTION(csv_save) {
+        zval *sheet = nullptr;
+        zend_string *filename = nullptr;
+        HashTable *given = nullptr;
+        ZEND_PARSE_PARAMETERS_START(2, 3)
+            Z_PARAM_OBJECT_OF_CLASS(sheet, sheet_class)
+            Z_PARAM_STR(filename)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_ARRAY_HT(given)
+        ZEND_PARSE_PARAMETERS_END();
+        const auto *values = sheet_given(sheet);
+        if (!values) RETURN_THROWS();
+        sc::php::guarded([&] { sc::office::csv::write(*values, std::string{view(filename)}, csv_options(given)); });
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_csv_output, 0, 1, IS_STRING, 0)
+        ZEND_ARG_OBJ_INFO(0, sheet, SC\\Excel\\Sheet, 0)
+        ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, options, IS_ARRAY, 0, "[]")
+    ZEND_END_ARG_INFO()
+
+    // The CSV as a string: what save() writes.
+    ZEND_NAMED_FUNCTION(csv_output) {
+        zval *sheet = nullptr;
+        HashTable *given = nullptr;
+        ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_OBJECT_OF_CLASS(sheet, sheet_class)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_ARRAY_HT(given)
+        ZEND_PARSE_PARAMETERS_END();
+        const auto *values = sheet_given(sheet);
+        if (!values) RETURN_THROWS();
+        sc::php::return_guarded_string(return_value, [&] { return sc::office::csv::bytes(*values, csv_options(given)); });
+    }
+
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_csv_delimiter, 0, 1, IS_STRING, 0)
+        ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
+    ZEND_END_ARG_INFO()
+
+    // The delimiter open() would find in text: "," or ";".
+    ZEND_NAMED_FUNCTION(csv_delimiter) {
+        zend_string *text = nullptr;
+        ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_STR(text)
+        ZEND_PARSE_PARAMETERS_END();
+        const char found = sc::office::csv::find_delimiter(view(text));
+        RETURN_STRINGL(&found, 1);
+    }
+
+    const zend_function_entry csv_methods[] = {
+        ZEND_NAMED_ME(open, csv_open, arginfo_csv_open, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_NAMED_ME(fromString, csv_from_string, arginfo_csv_from_string, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_NAMED_ME(create, csv_create, arginfo_csv_create, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_NAMED_ME(save, csv_save, arginfo_csv_save, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_NAMED_ME(output, csv_output, arginfo_csv_output, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_NAMED_ME(delimiter, csv_delimiter, arginfo_csv_delimiter, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_FE_END
+    };
+
     zend_class_entry *register_class(const char *name, const zend_function_entry *methods, const bool container) {
         zend_class_entry type;
         INIT_CLASS_ENTRY_EX(type, name, std::strlen(name), methods);
@@ -1249,6 +1424,7 @@ namespace {
         borders_class = register_class("SC\\Excel\\Borders", cell_methods, false);
         edge_class = register_class("SC\\Excel\\Edge", cell_methods, false);
         alignment_class = register_class("SC\\Excel\\Alignment", cell_methods, false);
+        register_class("SC\\Csv", csv_methods, false);
         for (auto *each: {sheet_class, row_class, cell_class, style_class, font_class, borders_class, edge_class, alignment_class})
             each->create_object = create_part;
         std::memcpy(&part_handlers, zend_get_std_object_handlers(), sizeof(part_handlers));

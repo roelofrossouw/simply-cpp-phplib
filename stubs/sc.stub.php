@@ -427,6 +427,68 @@ final class QrCode
     }
 }
 
+/**
+ * CSV files (RFC 4180), read into and written from the same \SC\Excel\Sheet as an Excel workbook's,
+ * so code that only uses data works the same on both: $sheet['B2']->value, foreach over rows and
+ * cells, $sheet['A1'] = 'Item'. A CSV file has no styles, widths or formulas: they're left out
+ * when one is written.
+ *
+ * $options: 'delimiter' (one character; '' or none finds it: a comma, unless the file reads more
+ * evenly with semicolons, as Excel writes CSV where the decimal separator is a comma), 'typed'
+ * (true by default: plain numbers read as numbers and TRUE/FALSE as booleans, a quoted field stays
+ * text; false reads every field as text), 'bom' (writing: a UTF-8 byte order mark first, which
+ * Excel needs to read UTF-8 text as such). An unknown option throws.
+ *
+ *     $prices = \SC\Csv::open('prices.csv');
+ *     foreach ($prices as $row) foreach ($row as $cell) echo $cell->name, ' ', $cell->value;
+ *     \SC\Csv::save($book['Prices'], 'prices.csv');   // an Excel sheet's values
+ *
+ * @link https://github.com/roelofrossouw/simply-cpp/wiki/Office
+ */
+final class Csv
+{
+    /**
+     * A CSV file as a sheet, named after the file ("prices" for prices.csv; "Sheet1" when Excel
+     * wouldn't take that name). Empty fields are cells that aren't set.
+     *
+     * @throws Exception When it can't be read, or a quoted field isn't closed.
+     */
+    public static function open(string $filename, array $options = []): \SC\Excel\Sheet
+    {
+    }
+
+    /** The same, for CSV text held in a string; the sheet is "Sheet1". */
+    public static function fromString(string $text, array $options = []): \SC\Excel\Sheet
+    {
+    }
+
+    /** An empty sheet, to fill and save as CSV. */
+    public static function create(string $name = 'Sheet1'): \SC\Excel\Sheet
+    {
+    }
+
+    /**
+     * Writes a sheet's values as CSV, from A1 to its last row and column, with CRLF line ends:
+     * a CSV sheet's, or an Excel workbook's (a formula gives the value it last calculated). Text
+     * that would read back as a number or TRUE/FALSE is quoted, so it stays text.
+     *
+     * @throws Exception When the file can't be written, or for a number that isn't finite.
+     */
+    public static function save(\SC\Excel\Sheet $sheet, string $filename, array $options = []): void
+    {
+    }
+
+    /** What save() writes, as a string: to send with header('Content-Type: text/csv'). */
+    public static function output(\SC\Excel\Sheet $sheet, array $options = []): string
+    {
+    }
+
+    /** The delimiter open() would find in the text: "," or ";". */
+    public static function delimiter(string $text): string
+    {
+    }
+}
+
 namespace SC\Excel;
 
 use SC\Exception;

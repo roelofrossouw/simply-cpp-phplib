@@ -66,6 +66,12 @@ $out['Prices']->width('A', 20);         // in characters, as Excel shows it
 unset($out['Prices']['A1']);
 $out->save('/tmp/prices.xlsx');         // or $out->output(), the .xlsx as a string
 
+// CSV files (sc-office): read into the same SC\Excel\Sheet, so the code above works on them too
+$prices = SC\Csv::open('prices.csv');   // , or ; found; or ::fromString($text), ['delimiter' => ';']
+$total = $prices['B2']->value;          // a plain number reads as a number, TRUE/FALSE as a bool
+$sheet = SC\Csv::create();              // an empty sheet to fill
+SC\Csv::save($out['Prices'], '/tmp/prices.csv');  // any sheet's values; or ::output($sheet)
+
 $png = SC\svg_to_png($svg, 800);        // 800 wide; width and height 0 (the default): its own size
 SC\base64_encode($bytes);               // SC\base64_decode() throws for text that isn't base64
 ```
