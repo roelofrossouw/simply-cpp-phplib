@@ -1,7 +1,7 @@
 # simply-cpp-phplib
 
 The `sc` PHP extension: simply-cpp's libraries for PHP, in the `SC` namespace. It's a thin
-wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-passkey, sc-bootstrap-email, sc-qrencode, sc-image, sc-core),
+wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-passkey, sc-bootstrap-email, sc-qrencode, sc-http, sc-image, sc-core),
 which its package depends on. Apache-2.0, as everything it links is (no AGPL modules).
 
 ```php
@@ -47,6 +47,17 @@ $qr = new SC\QrCode('https://example.com/invoice/123');  // correction 'medium';
 $svg = $qr->svg(30);                    // 30 mm square; svg() alone has a viewBox only and scales
 $png = $qr->png(8);                     // 8 pixels a module, 1 bit a pixel
 $qr->version(); $qr->size(); $qr->dark($x, $y);           // and SC\QrCode::binary($bytes)
+
+// HTTP (sc-http): REST and SOAP calls, TLS checked, timeouts always, nothing in the logs
+$api = new SC\Rest('https://example.com/api/items');
+$body = $api->bearer($token)->timeout(10)->post(['name' => 'x'], ['page' => 2]);   // an array as JSON, then ?page=2
+if ($api->status() !== 200) error_log($api->status() . ' ' . $api->error());       // 0: no response, error() says why
+$api->headers()['content-type']; $api->effectiveUrl(); $api->totalTime();
+(new SC\Rest($url))->header('Content-Type', 'application/x-www-form-urlencoded')->post($fields); // a form, as http_build_query()
+(new SC\Rest($url))->postMultipart(['note' => 'hi'], ['file' => '/tmp/a.pdf']);   // or ['path' =>, 'filename' =>, 'type' =>]
+$xml = (new SC\Rest($location))->header('Content-Type', 'text/xml; charset=utf-8')->header('SOAPAction', '"' . $action . '"')
+    ->clientCertificate('/etc/app/client.pem', null, $passphrase)->post($envelope);   // SoapClient's transport
+// also get/head/delete($query), put/patch($body), followRedirects(true, 5), connectTimeout(), trust($ca), verifyHost(false), pinnedPublicKey()
 
 // Excel workbooks (sc-office): sheets of cells with their values and formulas, read and written
 $book = SC\Excel\Workbook::open('prices.xlsx');        // or ::fromString($bytes)

@@ -21,6 +21,8 @@ message(STATUS "SimplyCPP ${SC_MODULE} Version: ${SC_VERSION}")
 # The extension is a thin wrapper: what it wraps comes from these modules' shared libraries (their
 # runtime packages), not copied into it.
 find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.20.0)
+# SC\Rest: sc::rest (sc-http 1.0.3: queries, forms, multipart, client keys with a passphrase, redirects).
+find_or_install_package(sc-http simply-cpp-http-dev simply-cpp-http 1.0.3)
 find_or_install_package(sc-image simply-cpp-image-dev simply-cpp-image 5.4.0)
 find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 1.5.0)
 # SC\Pdf: existing PDFs read, merged, decorated and protected.
@@ -69,10 +71,10 @@ message(STATUS "Building for PHP ${SC_PHPLIB_PHP_VERSION} (module API ${SC_PHPLI
 # sc.so, loaded by PHP with dlopen(): no "lib" prefix, no link against PHP (its symbols resolve at
 # load time; macOS needs that said). It links the modules' shared libraries themselves, not their
 # CMake targets, which would also bring the static libraries under them into it.
-add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/passkey.cpp src/bootstrap_email.cpp src/qr_code.cpp src/php_glue.h)
+add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/passkey.cpp src/bootstrap_email.cpp src/qr_code.cpp src/rest.cpp src/php_glue.h)
 target_compile_options(sc PRIVATE ${SC_PHPLIB_PHP_INCLUDES})
 target_compile_definitions(sc PRIVATE SC_PHPLIB_VERSION="${SC_VERSION}")
-foreach (module sc-core sc-image sc-html2pdf sc-pdflite sc-office sc-passkey sc-bootstrap-email sc-qrencode)
+foreach (module sc-core sc-http sc-image sc-html2pdf sc-pdflite sc-office sc-passkey sc-bootstrap-email sc-qrencode)
     target_link_libraries(sc PRIVATE $<TARGET_LINKER_FILE:sc::${module}-shared>)
     target_include_directories(sc PRIVATE $<TARGET_PROPERTY:sc::${module}-shared,INTERFACE_INCLUDE_DIRECTORIES>)
 endforeach ()
@@ -122,5 +124,5 @@ set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONFLICTS "html2pdf-php")
 # The modules' packages are named, not left to dpkg-shlibdeps: on a build server the libraries it
 # links are the deploys' own copies in /usr/local/lib, which no package owns.
 package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common"
-        "simply-cpp (>= 1.20.0~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.5.0~)" "simply-cpp-pdflite (>= 4.5.0~)" "simply-cpp-office (>= 1.10.1~)" "simply-cpp-passkey (>= 1.0.0~)"
+        "simply-cpp (>= 1.20.0~)" "simply-cpp-http (>= 1.0.3~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.5.0~)" "simply-cpp-pdflite (>= 4.5.0~)" "simply-cpp-office (>= 1.10.1~)" "simply-cpp-passkey (>= 1.0.0~)"
         "simply-cpp-bootstrap-email (>= 1.0.0~)" "simply-cpp-qrencode (>= 1.0.0~)")

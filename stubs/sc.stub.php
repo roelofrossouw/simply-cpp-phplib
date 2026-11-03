@@ -356,6 +356,180 @@ final class BootstrapEmail
 }
 
 /**
+ * HTTP for REST and SOAP calls (sc-http's sc::rest over libcurl): TLS certificates and host names
+ * checked by default, timeouts always, and nothing written to the logs; error() says what went
+ * wrong. Only http:// and https:// URLs, redirects included.
+ *
+ *     $api = new \SC\Rest('https://example.com/api/items');
+ *     $body = $api->bearer($token)->timeout(10)->post(['name' => 'x']);   // JSON
+ *     if ($api->status() !== 200) error_log($api->status() . ' ' . $api->error());
+ *
+ *     $soap = new \SC\Rest($location);
+ *     $xml = $soap->header('Content-Type', 'text/xml; charset=utf-8')->header('SOAPAction', '"' . $action . '"')
+ *         ->clientCertificate('/etc/app/client.pem', null, $passphrase)->post($envelope);
+ *
+ * The object keeps its settings; each request is a new connection with them, and status(), headers(),
+ * error(), effectiveUrl() and totalTime() describe the last one. A request that gets no response
+ * (refused, timed out, a certificate not trusted) returns '' with status() 0; it doesn't throw.
+ *
+ * @link https://github.com/roelofrossouw/simply-cpp/wiki/PHP
+ */
+final class Rest
+{
+    public function __construct(string $url)
+    {
+    }
+
+    /**
+     * A request header, replacing one of the same name (ignoring case). An empty value sends none,
+     * not even the default Content-Type (application/json) or curl's own.
+     *
+     * @throws Exception For a name with ':' or a line break, or a value with a line break.
+     */
+    public function header(string $name, string $value): static
+    {
+    }
+
+    /** Authorization: Bearer <token>, replacing one set before. */
+    public function bearer(string $token): static
+    {
+    }
+
+    /**
+     * The whole request's limit (default 30).
+     *
+     * @throws Exception For less than 1 second or more than a day.
+     */
+    public function timeout(int $seconds): static
+    {
+    }
+
+    /**
+     * Connecting's limit (default 10).
+     *
+     * @throws Exception For less than 1 second or more than a day.
+     */
+    public function connectTimeout(int $seconds): static
+    {
+    }
+
+    /**
+     * A TLS client certificate (PEM), for a server that asks for one.
+     *
+     * @param string|null $keyFile Its key; null when it's in certificateFile too (SoapClient's local_cert).
+     * @param string|null $passphrase The key's, when it's encrypted.
+     */
+    public function clientCertificate(string $certificateFile, ?string $keyFile = null, ?string $passphrase = null): static
+    {
+    }
+
+    /** Trusts only certificates signed by (or being) one in this PEM file, instead of the system's authorities. */
+    public function trust(string $caFile): static
+    {
+    }
+
+    /** Whether the certificate must name the host connected to (default true); it's still checked against trust(). */
+    public function verifyHost(bool $on): static
+    {
+    }
+
+    /** Accepts only a server with this public key, curl's "sha256//<base64>" (several joined by ';'). */
+    public function pinnedPublicKey(string $pins): static
+    {
+    }
+
+    /**
+     * Follows redirects (off by default), at most max; effectiveUrl() is where they led. A POST
+     * answered with 301, 302 or 303 is followed with a GET.
+     *
+     * @throws Exception For a max outside 0 to 50.
+     */
+    public function followRedirects(bool $on = true, int $max = 5): static
+    {
+    }
+
+    /**
+     * A GET; the body byte for byte, whatever the status ('' when no response came).
+     *
+     * @param array $query Query parameters, added to the URL's own as http_build_query() writes them.
+     */
+    public function get(array $query = []): string
+    {
+    }
+
+    /** A HEAD: status() and headers(), no body. */
+    public function head(array $query = []): string
+    {
+    }
+
+    /** A DELETE; the body, whatever the status. */
+    public function delete(array $query = []): string
+    {
+    }
+
+    /**
+     * A POST; the response body, whatever the status.
+     *
+     * @param string|array|null $body A string as it is; an array as JSON (json_encode()), or, when the
+     *     Content-Type set is application/x-www-form-urlencoded, as http_build_query() writes it.
+     * @param array $query Query parameters.
+     * @throws Exception For an array body with a multipart Content-Type (that's postMultipart()'s),
+     *     or one that can't be written as JSON.
+     */
+    public function post(string|array|null $body = '', array $query = []): string
+    {
+    }
+
+    /** A PUT, with a body as post() takes it. */
+    public function put(string|array|null $body = '', array $query = []): string
+    {
+    }
+
+    /** A PATCH, with a body as post() takes it. */
+    public function patch(string|array|null $body = '', array $query = []): string
+    {
+    }
+
+    /**
+     * A POST of multipart/form-data, for upload APIs; the Content-Type, with its boundary, is curl's.
+     *
+     * @param array $fields name => value.
+     * @param array $files name => path, or name => ['path' => ..., 'filename' => ..., 'type' => ...]
+     *     (the filename defaults to the file's own, the type to application/octet-stream).
+     * @throws Exception For a field that's an array, or a file without a path. A file that can't be
+     *     read is no response: status() 0, error() says which.
+     */
+    public function postMultipart(array $fields, array $files = [], array $query = []): string
+    {
+    }
+
+    /** The last response's HTTP status (200, 404, ...); 0 when none came. */
+    public function status(): int
+    {
+    }
+
+    /** The last response's headers by lower-cased name ('content-type' => ...). */
+    public function headers(): array
+    {
+    }
+
+    /** Why the last request got no response; '' when one came. */
+    public function error(): string
+    {
+    }
+
+    /** The URL the last response came from: where redirects led, with the query. */
+    public function effectiveUrl(): string
+    {
+    }
+
+    /** How long the last request took, in seconds, redirects included. */
+    public function totalTime(): float
+    {
+    }
+}
+
+/**
  * A QR code made from text or bytes, written as SVG or PNG with no image library (sc-qrencode, on
  * Project Nayuki's QR Code generator). The smallest version that holds the data is chosen, then the
  * highest correction level that still fits, at least the one asked for.
