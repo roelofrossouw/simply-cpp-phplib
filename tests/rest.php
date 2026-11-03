@@ -8,7 +8,10 @@ $r = new SC\Rest('http://127.0.0.1:1/');
 check($r->connectTimeout(2)->get() === '' && $r->status() === 0 && $r->error() !== '', 'no response: empty, status 0, error() says why');
 check(throws(fn() => (new SC\Rest('http://x/'))->timeout(0)), 'a limit of 0 seconds refused');
 check(throws(fn() => (new SC\Rest('http://x/'))->header("X-A\r\nX-B", '1')), 'a header name with a line break refused');
-check((new SC\Rest('file:///etc/hosts'))->get() === '', 'only http and https');
+foreach (['file:///etc/hosts', 'file:///etc/hostname', 'ftp://127.0.0.1/x', 'gopher://127.0.0.1/x', 'dict://127.0.0.1/x'] as $url) {
+    $other = new SC\Rest($url);
+    check($other->get() === '' && $other->status() === 0 && str_contains($other->error(), 'rotocol'), "only http and https: $url refused");
+}
 
 if (!shell_exec('command -v openssl') || !shell_exec('command -v python3')) {
     echo "(no openssl or python3: the server checks didn't run)\n";
@@ -90,6 +93,9 @@ $plain->get();
 check($plain->status() === 302, 'redirects not followed unless asked');
 $followed = new SC\Rest("$http/redirect/2");
 check($echo($followed->followRedirects()->get())['path'] === '/echo' && $followed->effectiveUrl() === "$http/echo", 'followed, to where they led');
+$to_file = new SC\Rest("$http/to-file");
+$read = $to_file->followRedirects()->get();
+check($to_file->status() === 0 && !str_contains($read, 'localhost') && str_contains($to_file->error(), 'rotocol'), 'a redirect to file:// refused, nothing read');
 $limited = new SC\Rest("$http/redirect/4");
 $limited->followRedirects(true, 2)->get();
 check($limited->status() === 0 && $limited->error() !== '', 'more than max: no response');
