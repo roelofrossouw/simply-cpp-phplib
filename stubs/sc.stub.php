@@ -668,6 +668,145 @@ final class Csv
     }
 }
 
+/**
+ * An email read in memory: an .eml file (MIME) or an Outlook .msg, with nothing written next to
+ * it. A .msg reads like an .eml: From (the SMTP address when it has one), To, Cc, Subject, Date,
+ * the text body, HTML from its HTML or its RTF, attachments and attached messages.
+ *
+ *     $mail = \SC\Mail::open('/var/www/data/in/x.msg');      // or \SC\Mail::fromString($bytes)
+ *     $mail->subject(); $mail->from()[0]['address'];
+ *     $html = $mail->html() ?? nl2br(htmlspecialchars($mail->text() ?? ''));
+ *     foreach ($mail->attachments() as $file)
+ *         file_put_contents($folder . '/' . basename($file['filename'] ?? $file['label']), $mail->part($file['label']));
+ *
+ * Parts have labels as mailparse's do: the top part is "1", a multipart's parts "1.1", "1.2", ...,
+ * and an attached message's top part one level below it ("1.2.1"). A part is an array:
+ * 'label', 'type' ("application/pdf"), 'charset', 'filename', 'disposition' ("inline",
+ * "attachment" or null), 'content_id' (what the HTML's "cid:" links name), 'size' (decoded bytes;
+ * 0 for a multipart), 'multipart', 'message' (an attached message), 'attachment' (a file rather
+ * than body text). Addresses are arrays of ['name' => ..., 'address' => ...].
+ *
+ * @link https://github.com/roelofrossouw/simply-cpp/wiki/PHP
+ */
+final class Mail
+{
+    /**
+     * An .eml or .msg file.
+     *
+     * @throws Exception When it can't be read, or holds no message.
+     */
+    public static function open(string $path): Mail
+    {
+    }
+
+    /**
+     * The same, for a message's bytes.
+     *
+     * @throws Exception When they hold no message.
+     */
+    public static function fromString(string $bytes): Mail
+    {
+    }
+
+    /** RTF as HTML: the HTML Outlook wraps in RTF as it was, other RTF as HTML of its text. */
+    public static function rtfToHtml(string $rtf): string
+    {
+    }
+
+    /** Decoded to UTF-8; '' when it has none. */
+    public function subject(): string
+    {
+    }
+
+    public function from(): array
+    {
+    }
+
+    public function to(): array
+    {
+    }
+
+    public function cc(): array
+    {
+    }
+
+    public function bcc(): array
+    {
+    }
+
+    public function replyTo(): array
+    {
+    }
+
+    /** When it was sent, in seconds since 1970; null when it has no date. */
+    public function date(): ?int
+    {
+    }
+
+    /** Without the <>; '' when it has none. */
+    public function messageId(): string
+    {
+    }
+
+    /** A header's value, unfolded and decoded, any case; null when it has none. */
+    public function header(string $name): ?string
+    {
+    }
+
+    /** Every header in order, as ['name' => ..., 'value' => ...]. */
+    public function headers(): array
+    {
+    }
+
+    /** The text body in UTF-8 with "\n" line ends; null when it has none. */
+    public function text(): ?string
+    {
+    }
+
+    /** The HTML body in UTF-8 (a .msg's from its RTF when that's all it has); null when it has none. */
+    public function html(): ?string
+    {
+    }
+
+    /** Every part, in order (see above). */
+    public function parts(): array
+    {
+    }
+
+    /** The parts that are files (inline pictures and attached messages too), not those inside an attached message. */
+    public function attachments(): array
+    {
+    }
+
+    /**
+     * A part's content, its transfer encoding undone: a file's bytes, text in its own charset, an
+     * attached message's whole text.
+     *
+     * @throws Exception For a label that isn't a part, or a multipart.
+     */
+    public function part(string $label): string
+    {
+    }
+
+    /**
+     * A text part's content in UTF-8 with "\n" line ends; RTF as HTML.
+     *
+     * @throws Exception For a label that isn't a part, or a part that isn't text.
+     */
+    public function partText(string $label): string
+    {
+    }
+
+    /**
+     * An attached message, as a Mail of its own.
+     *
+     * @throws Exception For a label that isn't an attached message.
+     */
+    public function message(string $label): Mail
+    {
+    }
+}
+
 namespace SC\Excel;
 
 use SC\Exception;

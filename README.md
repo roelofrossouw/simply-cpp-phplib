@@ -1,7 +1,7 @@
 # simply-cpp-phplib
 
 The `sc` PHP extension: simply-cpp's libraries for PHP, in the `SC` namespace. It's a thin
-wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-passkey, sc-bootstrap-email, sc-qrencode, sc-http, sc-image, sc-core),
+wrapper: the work is done by the modules' shared libraries (sc-html2pdf, sc-pdflite, sc-office, sc-passkey, sc-bootstrap-email, sc-qrencode, sc-http, sc-mime, sc-image, sc-core),
 which its package depends on. Apache-2.0, as everything it links is (no AGPL modules).
 
 ```php
@@ -58,6 +58,14 @@ $api->headers()['content-type']; $api->effectiveUrl(); $api->totalTime();
 $xml = (new SC\Rest($location))->header('Content-Type', 'text/xml; charset=utf-8')->header('SOAPAction', '"' . $action . '"')
     ->clientCertificate('/etc/app/client.pem', null, $passphrase)->post($envelope);   // SoapClient's transport
 // also get/head/delete($query), put/patch($body), followRedirects(true, 5), connectTimeout(), trust($ca), verifyHost(false), pinnedPublicKey()
+
+// Email (sc-mime): .eml and Outlook .msg read in memory, nothing written
+$mail = SC\Mail::open('/var/www/data/in/x.msg');       // or ::fromString($bytes); .eml the same
+$mail->subject(); $mail->from()[0]['address']; $mail->to(); $mail->cc(); $mail->date(); // date: unix time or null
+$html = $mail->html() ?? nl2br(htmlspecialchars($mail->text() ?? ''));   // a .msg's HTML from its RTF too
+foreach ($mail->attachments() as $file)                  // label, type, charset, filename, disposition, content_id, size, ...
+    $bytes = $mail->part($file['label']);                // decoded; partText() for text in UTF-8, message() for an attached one
+// also parts() (every part, labelled "1", "1.1", "1.2.1" as mailparse), header($name), headers(), SC\Mail::rtfToHtml($rtf)
 
 // Excel workbooks (sc-office): sheets of cells with their values and formulas, read and written
 $book = SC\Excel\Workbook::open('prices.xlsx');        // or ::fromString($bytes)

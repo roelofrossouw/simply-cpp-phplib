@@ -64,4 +64,5 @@ namespace sc::php {
     area bootstrap_email_area();
     area qr_code_area();
     area rest_area();
+    area mail_area();
 }
