@@ -124,5 +124,5 @@ set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONFLICTS "html2pdf-php")
 # The modules' packages are named, not left to dpkg-shlibdeps: on a build server the libraries it
 # links are the deploys' own copies in /usr/local/lib, which no package owns.
 package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common"
-        "simply-cpp (>= 1.20.0~)" "simply-cpp-http (>= 1.0.3~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.5.0~)" "simply-cpp-pdflite (>= 4.5.0~)" "simply-cpp-office (>= 1.10.1~)" "simply-cpp-passkey (>= 1.0.0~)"
+        "simply-cpp (>= 2.0.0~)" "simply-cpp-http (>= 1.0.3~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.5.0~)" "simply-cpp-pdflite (>= 4.5.0~)" "simply-cpp-office (>= 1.10.1~)" "simply-cpp-passkey (>= 1.0.0~)"
         "simply-cpp-bootstrap-email (>= 1.0.0~)" "simply-cpp-qrencode (>= 1.0.0~)")
