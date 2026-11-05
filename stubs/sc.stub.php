@@ -396,11 +396,22 @@ final class Rest
     }
 
     /**
-     * The whole request's limit (default 30).
+     * The whole request's limit (default 30; 0: none, e.g. with idleTimeout()).
      *
-     * @throws Exception For less than 1 second or more than a day.
+     * @throws Exception For less than 0 seconds or more than a day.
      */
     public function timeout(int $seconds): static
+    {
+    }
+
+    /**
+     * Gives up when no data arrives for this long (less than a byte a second over that time), however
+     * long the whole request may take: a slow but steady answer goes on, a silent server doesn't. 0
+     * (the default): no such limit. With timeout(0), as file_get_contents' read timeout.
+     *
+     * @throws Exception For less than 0 seconds or more than a day.
+     */
+    public function idleTimeout(int $seconds): static
     {
     }
 
@@ -515,6 +526,14 @@ final class Rest
 
     /** Why the last request got no response; '' when one came. */
     public function error(): string
+    {
+    }
+
+    /**
+     * curl's error number for the last request (7 couldn't connect, 28 timed out, 56 the connection
+     * broke while receiving ...); 0 when a response came. Curl's numbers, whatever does the transfer.
+     */
+    public function errorCode(): int
     {
     }
 

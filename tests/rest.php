@@ -6,7 +6,8 @@ require __DIR__ . '/check.inc';
 
 $r = new SC\Rest('http://127.0.0.1:1/');
 check($r->connectTimeout(2)->get() === '' && $r->status() === 0 && $r->error() !== '', 'no response: empty, status 0, error() says why');
-check(throws(fn() => (new SC\Rest('http://x/'))->timeout(0)), 'a limit of 0 seconds refused');
+check(throws(fn() => (new SC\Rest('http://x/'))->timeout(-1)) && throws(fn() => (new SC\Rest('http://x/'))->connectTimeout(0)), 'limits below 0 (connecting: 1) refused');
+check(throws(fn() => (new SC\Rest('http://x/'))->idleTimeout(86401)), 'an idle limit over a day refused');
 check(throws(fn() => (new SC\Rest('http://x/'))->header("X-A\r\nX-B", '1')), 'a header name with a line break refused');
 foreach (['file:///etc/hosts', 'file:///etc/hostname', 'ftp://127.0.0.1/x', 'gopher://127.0.0.1/x', 'dict://127.0.0.1/x'] as $url) {
     $other = new SC\Rest($url);
@@ -103,6 +104,15 @@ $slow = new SC\Rest("$http/slow");
 $started = microtime(true);
 $slow->timeout(1)->get();
 check($slow->status() === 0 && microtime(true) - $started < 3, 'a timeout');
+check($slow->errorCode() === 28, "curl's number for it: 28");
+$drip = new SC\Rest("$http/drip");
+check($drip->timeout(0)->idleTimeout(2)->get() === 'drips' && $drip->status() === 200 && $drip->errorCode() === 0,
+      'no total limit, an idle one: a slow but steady answer comes whole');
+$stall = new SC\Rest("$http/stall");
+$started = microtime(true);
+$stall->timeout(0)->idleTimeout(1)->get();
+check($stall->status() === 0 && $stall->errorCode() === 28 && microtime(true) - $started < 3.5, 'a silent server: given up');
+check((new SC\Rest("$http/gzip"))->get() === 'compressed hello', 'a gzipped answer asked for and undone');
 
 // TLS
 $https = "https://127.0.0.1:$https_port/echo";

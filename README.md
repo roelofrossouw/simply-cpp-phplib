@@ -58,6 +58,8 @@ $api->headers()['content-type']; $api->effectiveUrl(); $api->totalTime();
 $xml = (new SC\Rest($location))->header('Content-Type', 'text/xml; charset=utf-8')->header('SOAPAction', '"' . $action . '"')
     ->clientCertificate('/etc/app/client.pem', null, $passphrase)->post($envelope);   // SoapClient's transport
 // also get/head/delete($query), put/patch($body), followRedirects(true, 5), connectTimeout(), trust($ca), verifyHost(false), pinnedPublicKey()
+(new SC\Rest($url))->timeout(0)->idleTimeout(60)->get();        // no total limit, but not 60 s of silence; errorCode(): curl's number (56: broke while receiving)
+// answers come gzip/deflate-compressed when the server offers it, and are undone
 
 // Email (sc-mime): .eml and Outlook .msg read in memory, nothing written
 $mail = SC\Mail::open('/var/www/data/in/x.msg');       // or ::fromString($bytes); .eml the same

@@ -43,7 +43,7 @@ namespace {
     struct settings {
         std::string url;
         std::vector<std::pair<std::string, std::string>> headers; // in order; header() replaces one of the same name
-        long timeout = 30, connect_timeout = 10;
+        long timeout = 30, connect_timeout = 10, idle = 0; // idle: idleTimeout(), 0 none
         std::string certificate, key, passphrase, ca, pins;
         bool verify_host = true, follow = false;
         long max_redirects = 5;
@@ -51,6 +51,7 @@ namespace {
         long status = 0;
         std::map<std::string, std::string> response_headers;
         std::string error, effective_url;
+        long error_code = 0;
         double total_time = 0;
     };
 
@@ -150,7 +151,7 @@ namespace {
         sc::rest request{s.url};
         request.quiet();
         for (const auto &[name, value]: s.headers) request.header(name, value);
-        request.timeout(s.timeout).connect_timeout(s.connect_timeout);
+        request.timeout(s.timeout).connect_timeout(s.connect_timeout).idle_timeout(s.idle);
         if (!s.certificate.empty()) request.client_certificate(s.certificate, s.key, s.passphrase);
         if (!s.ca.empty()) request.trust(s.ca);
         request.verify_host(s.verify_host);
@@ -168,6 +169,7 @@ namespace {
         s.status = request.status();
         s.response_headers = request.response_headers();
         s.error = request.error();
+        s.error_code = request.error_code();
         s.effective_url = request.effective_url();
         s.total_time = request.total_time();
         // No response: an empty string, not sc::rest's {"error": ...} (error() has it).
@@ -285,14 +287,16 @@ namespace {
         ZEND_ARG_TYPE_INFO(0, seconds, IS_LONG, 0)
     ZEND_END_ARG_INFO()
 
+    // A limit in seconds, least (0: none, or 1) to a day.
     template<typename Set>
-    void set_seconds(INTERNAL_FUNCTION_PARAMETERS, Set set) {
+    void set_seconds(INTERNAL_FUNCTION_PARAMETERS, const long least, Set set) {
         zend_long seconds = 0;
         ZEND_PARSE_PARAMETERS_START(1, 1)
             Z_PARAM_LONG(seconds)
         ZEND_PARSE_PARAMETERS_END();
         sc::php::guarded([&] {
-            if (seconds < 1 || seconds > 86400) throw std::invalid_argument{"SC\\Rest: a limit is 1 to 86400 seconds"};
+            if (seconds < least || seconds > 86400)
+                throw std::invalid_argument{least == 0 ? "SC\\Rest: a limit is 0 (none) to 86400 seconds" : "SC\\Rest: a limit is 1 to 86400 seconds"};
             set(of(ZEND_THIS), static_cast<long>(seconds));
         });
         if (EG(exception)) RETURN_THROWS();
@@ -300,11 +304,16 @@ namespace {
     }
 
     ZEND_NAMED_FUNCTION(rest_timeout) {
-        set_seconds(INTERNAL_FUNCTION_PARAM_PASSTHRU, [](settings &s, const long seconds) { s.timeout = seconds; });
+        set_seconds(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0, [](settings &s, const long seconds) { s.timeout = seconds; });
     }
 
     ZEND_NAMED_FUNCTION(rest_connect_timeout) {
-        set_seconds(INTERNAL_FUNCTION_PARAM_PASSTHRU, [](settings &s, const long seconds) { s.connect_timeout = seconds; });
+        set_seconds(INTERNAL_FUNCTION_PARAM_PASSTHRU, 1, [](settings &s, const long seconds) { s.connect_timeout = seconds; });
+    }
+
+    // Gives up when no data arrives for that long (0: never), however long the whole may take.
+    ZEND_NAMED_FUNCTION(rest_idle_timeout) {
+        set_seconds(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0, [](settings &s, const long seconds) { s.idle = seconds; });
     }
 
     ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_certificate, 0, 1, static, 0)
@@ -515,6 +524,15 @@ namespace {
         sc::php::return_guarded_string(return_value, [&] { return of(ZEND_THIS).error; });
     }
 
+    // curl's error number for the last request (CURLcode), 0 when a response came.
+    ZEND_NAMED_FUNCTION(rest_error_code) {
+        ZEND_PARSE_PARAMETERS_NONE();
+        long code = 0;
+        sc::php::guarded([&] { code = of(ZEND_THIS).error_code; });
+        if (EG(exception)) RETURN_THROWS();
+        RETURN_LONG(code);
+    }
+
     ZEND_NAMED_FUNCTION(rest_effective_url) {
         ZEND_PARSE_PARAMETERS_NONE();
         sc::php::return_guarded_string(return_value, [&] { return of(ZEND_THIS).effective_url; });
@@ -537,6 +555,7 @@ namespace {
         ZEND_NAMED_ME(bearer, rest_bearer, arginfo_bearer, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(timeout, rest_timeout, arginfo_seconds, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(connectTimeout, rest_connect_timeout, arginfo_seconds, ZEND_ACC_PUBLIC)
+        ZEND_NAMED_ME(idleTimeout, rest_idle_timeout, arginfo_seconds, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(clientCertificate, rest_client_certificate, arginfo_certificate, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(trust, rest_trust, arginfo_trust, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(verifyHost, rest_verify_host, arginfo_verify_host, ZEND_ACC_PUBLIC)
@@ -552,6 +571,7 @@ namespace {
         ZEND_NAMED_ME(status, rest_status, arginfo_long, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(headers, rest_headers, arginfo_array, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(error, rest_error, arginfo_text, ZEND_ACC_PUBLIC)
+        ZEND_NAMED_ME(errorCode, rest_error_code, arginfo_long, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(effectiveUrl, rest_effective_url, arginfo_text, ZEND_ACC_PUBLIC)
         ZEND_NAMED_ME(totalTime, rest_total_time, arginfo_double, ZEND_ACC_PUBLIC)
         ZEND_FE_END
