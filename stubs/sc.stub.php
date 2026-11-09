@@ -24,8 +24,10 @@ class Exception extends \Exception
  * cut between lines of text, images and boxes, never through them.
  *
  * In the header and footer #Page#, #ToPage#, #section#, #subsection# and #subtitle# are filled in
- * per page; a header's #P1Head shows on the first page only and #POHead on the others. In the
- * content <section> starts a new page and an entry in the table of contents.
+ * per page (a section whose text is an image's path, <section alt='Brokerage'>/logos/logo1.png</section>,
+ * shows that image, class section-image, while its alt is its table of contents entry); a
+ * header's #P1Head shows on the first page only and #POHead on the others. In the content
+ * <section> starts a new page and an entry in the table of contents.
  *
  * An image whose src starts with qr: is a QR code of what follows, drawn as vector shapes (sharp
  * at any size), written like a data: URI: qr:[correction=L|M|Q|H][;margin=N][;base64],<data>, as
