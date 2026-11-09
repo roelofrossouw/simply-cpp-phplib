@@ -25,7 +25,7 @@ find_or_install_package(sc-core simply-cpp-dev simply-cpp 1.20.0)
 # idle limits, curl's error numbers, compressed answers).
 find_or_install_package(sc-http simply-cpp-http-dev simply-cpp-http 1.1.0)
 find_or_install_package(sc-image simply-cpp-image-dev simply-cpp-image 5.4.0)
-find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 1.5.0)
+find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 1.6.0) # 1.6.0: the check SC\Html2Pdf's time limit uses
 # SC\Pdf: existing PDFs read, merged, decorated and protected.
 find_or_install_package(sc-pdflite simply-cpp-pdflite-dev simply-cpp-pdflite 4.5.0)
 # SC\Excel: Excel workbooks read and written (erase() and bytes() since 1.2.0, styles and widths since 1.3.0, italic, underline and borders since 1.4.0, alignment and number formats since 1.5.0, merges and row heights since 1.6.0, hidden columns and frozen panes since 1.7.0, hidden rows and strike since 1.8.0, rotation and diagonals since 1.9.0).
@@ -74,7 +74,7 @@ message(STATUS "Building for PHP ${SC_PHPLIB_PHP_VERSION} (module API ${SC_PHPLI
 # sc.so, loaded by PHP with dlopen(): no "lib" prefix, no link against PHP (its symbols resolve at
 # load time; macOS needs that said). It links the modules' shared libraries themselves, not their
 # CMake targets, which would also bring the static libraries under them into it.
-add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/passkey.cpp src/bootstrap_email.cpp src/qr_code.cpp src/rest.cpp src/mail.cpp src/php_glue.h)
+add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/passkey.cpp src/bootstrap_email.cpp src/qr_code.cpp src/rest.cpp src/mail.cpp src/native_time.cpp src/php_glue.h)
 target_compile_options(sc PRIVATE ${SC_PHPLIB_PHP_INCLUDES})
 target_compile_definitions(sc PRIVATE SC_PHPLIB_VERSION="${SC_VERSION}")
 foreach (module sc-core sc-http sc-image sc-html2pdf sc-pdflite sc-office sc-passkey sc-bootstrap-email sc-qrencode sc-mime)
@@ -107,7 +107,9 @@ if (SC_PHPLIB_BUILD_TESTS)
         add_test(NAME test-php-${name}
                 COMMAND "${SC_PHPLIB_PHP_BINARY}" -n -d "extension=$<TARGET_FILE:sc>" "${test}"
                 WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests")
-        set_tests_properties(test-php-${name} PROPERTIES LABELS unit FAIL_REGULAR_EXPRESSION "FAILED")
+        # SC_PHPLIB_EXTENSION: for a test that runs PHP again (time_limit.php).
+        set_tests_properties(test-php-${name} PROPERTIES LABELS unit FAIL_REGULAR_EXPRESSION "FAILED"
+                ENVIRONMENT "SC_PHPLIB_EXTENSION=$<TARGET_FILE:sc>")
     endforeach ()
 endif ()
 
@@ -127,5 +129,5 @@ set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONFLICTS "html2pdf-php")
 # The modules' packages are named, not left to dpkg-shlibdeps: on a build server the libraries it
 # links are the deploys' own copies in /usr/local/lib, which no package owns.
 package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common"
-        "simply-cpp (>= 2.0.0~)" "simply-cpp-http (>= 1.1.0~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.5.0~)" "simply-cpp-pdflite (>= 4.5.0~)" "simply-cpp-office (>= 1.10.1~)" "simply-cpp-passkey (>= 1.0.0~)"
+        "simply-cpp (>= 2.0.0~)" "simply-cpp-http (>= 1.1.0~)" "simply-cpp-image (>= 5.4.0~)" "simply-cpp-html2pdf (>= 1.6.0~)" "simply-cpp-pdflite (>= 4.5.0~)" "simply-cpp-office (>= 1.10.1~)" "simply-cpp-passkey (>= 1.0.0~)"
         "simply-cpp-bootstrap-email (>= 1.0.0~)" "simply-cpp-qrencode (>= 1.0.0~)" "simply-cpp-mime (>= 1.2.0~)")

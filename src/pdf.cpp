@@ -81,7 +81,7 @@ namespace {
             Z_PARAM_OPTIONAL
             Z_PARAM_ARRAY_HT(protection)
         ZEND_PARSE_PARAMETERS_END();
-        sc::php::guarded([&] {
+        sc::php::guarded_native([&] {
             std::vector<std::filesystem::path> inputs;
             zval *file = nullptr;
             ZEND_HASH_FOREACH_VAL(files, file) { inputs.emplace_back(text_of(file)); } ZEND_HASH_FOREACH_END();
@@ -109,7 +109,7 @@ namespace {
             Z_PARAM_STR(layer)
             Z_PARAM_ARRAY_HT(protection)
         ZEND_PARSE_PARAMETERS_END();
-        sc::php::guarded([&] {
+        sc::php::guarded_native([&] {
             sc::pdflite::decorate(path_of(file), path_of(decoration), path_of(output),
                                   layer ? layer_of(sc::php::view(layer)) : sc::pdflite::layer::behind, protection_of(protection));
         });
@@ -133,7 +133,7 @@ namespace {
             Z_PARAM_OPTIONAL
             Z_PARAM_STR(password)
         ZEND_PARSE_PARAMETERS_END();
-        sc::php::guarded([&] {
+        sc::php::guarded_native([&] {
             const auto settings = protection_of(protection);
             if (!settings) throw std::invalid_argument{"SC\\Pdf::protect(): no password given"};
             sc::pdflite::protect(path_of(file), path_of(output), *settings, password ? sc::php::view(password) : std::string_view{});

@@ -387,7 +387,7 @@ namespace {
     template<typename Run>
     void request(zval *return_value, Run run) {
         std::string answer;
-        sc::php::guarded([&] { answer = run(); });
+        sc::php::guarded_native([&] { answer = run(); }); // its own timeouts limit it (timeout(), connectTimeout())
         if (EG(exception)) RETURN_THROWS();
         RETURN_STRINGL(answer.data(), answer.size());
     }

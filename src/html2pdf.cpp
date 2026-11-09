@@ -6,6 +6,12 @@
 //     $pdf->pageCount();
 //
 // The options are sc::html2pdf::options by name; one it doesn't know throws, so a typo shows.
+//
+// Laying out and writing pause PHP's max_execution_time (sc::php::native_time): a long render
+// isn't cut off by it (which ends the whole php-fpm worker), and the PHP around it keeps the time
+// it had. Each of them has its own limit instead: the option 'time_limit' (seconds, 0 for none),
+// by default the ini setting sc.time_limit (300). Past it, or once the client has gone, the render
+// stops between pages and throws an SC\Exception (save() leaves no file).
 
 #include "php_glue.h"
 
@@ -23,6 +29,7 @@ namespace {
 
     struct html2pdf_object {
         sc::html2pdf *pdf;
+        sc::php::time_limit *limit; // the render's own, counted from the start of each call
         zend_object std;
     };
 
@@ -33,6 +40,7 @@ namespace {
     zend_object *create(zend_class_entry *type) {
         auto *self = static_cast<html2pdf_object *>(zend_object_alloc(sizeof(html2pdf_object), type));
         self->pdf = nullptr;
+        self->limit = nullptr;
         zend_object_std_init(&self->std, type);
         object_properties_init(&self->std, type);
         self->std.handlers = &handlers;
@@ -41,6 +49,7 @@ namespace {
 
     void free_object(zend_object *object) {
         delete object_of(object)->pdf;
+        delete object_of(object)->limit;
         zend_object_std_dtor(object);
     }
 
@@ -65,7 +74,7 @@ namespace {
         check_keys(given, "option",
                    {"size", "landscape", "margins", "header", "footer", "css", "base_url", "media", "toc_page", "toc_title", "outline",
                     "metadata", "user_password", "owner_password", "split_boxes", "draw_margins", "builtin_fonts",
-                    "image_resolution"});
+                    "image_resolution", "time_limit"}); // time_limit: the extension's own (time_limit_of())
         sc::html2pdf::options settings;
         if (zval *v = find(given, "size")) settings.size = sc::page_size_from(text_of(v));
         if (zval *v = find(given, "landscape")) settings.turned = zend_is_true(v) ? sc::orientation::landscape : sc::orientation::portrait;
@@ -118,10 +127,25 @@ namespace {
         return settings;
     }
 
+    // The option 'time_limit' (seconds), else sc.time_limit.
+    double time_limit_of(HashTable *given) {
+        zval *v = given ? find(given, "time_limit") : nullptr;
+        if (!v || Z_TYPE_P(v) == IS_NULL) return sc::php::default_time_limit();
+        if (Z_TYPE_P(v) != IS_LONG && Z_TYPE_P(v) != IS_DOUBLE) throw std::invalid_argument{"SC\\Html2Pdf: 'time_limit' must be a number of seconds"};
+        return zval_get_double(v);
+    }
+
     sc::html2pdf &laid_out(zval *self) {
         auto *pdf = object_of(Z_OBJ_P(self))->pdf;
         if (!pdf) throw std::logic_error{"SC\\Html2Pdf: not constructed"};
         return *pdf;
+    }
+
+    // The document, its time limit counting again from now (for save() and output()).
+    sc::html2pdf &restarted(zval *self) {
+        auto &pdf = laid_out(self);
+        object_of(Z_OBJ_P(self))->limit->restart();
+        return pdf;
     }
 
     ZEND_BEGIN_ARG_INFO_EX(arginfo_construct, 0, 0, 1)
@@ -138,10 +162,15 @@ namespace {
             Z_PARAM_ARRAY_HT(given)
         ZEND_PARSE_PARAMETERS_END();
         auto *self = object_of(Z_OBJ_P(ZEND_THIS));
-        sc::php::guarded([&] {
-            auto made = std::make_unique<sc::html2pdf>(sc::php::view(html), given ? options_of(given) : sc::html2pdf::options{});
+        sc::php::guarded_native([&] {
+            auto settings = given ? options_of(given) : sc::html2pdf::options{};
+            auto limit = std::make_unique<sc::php::time_limit>("SC\\Html2Pdf", time_limit_of(given));
             delete self->pdf;
-            self->pdf = made.release();
+            self->pdf = nullptr;
+            delete self->limit;
+            self->limit = limit.release();
+            // Checked between the render's steps and pages; self (and its limit) outlive the render.
+            self->pdf = new sc::html2pdf(sc::php::view(html), std::move(settings), [self] { self->limit->check(); });
         });
     }
 
@@ -154,7 +183,7 @@ namespace {
         ZEND_PARSE_PARAMETERS_START(1, 1)
             Z_PARAM_STR(filename)
         ZEND_PARSE_PARAMETERS_END();
-        sc::php::guarded([&] { laid_out(ZEND_THIS).save(std::string{sc::php::view(filename)}); });
+        sc::php::guarded_native([&] { restarted(ZEND_THIS).save(std::string{sc::php::view(filename)}); });
     }
 
     ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_output, 0, 0, IS_STRING, 0)
@@ -163,7 +192,10 @@ namespace {
     // The PDF as a string: what save() writes (bytes()).
     ZEND_NAMED_FUNCTION(html2pdf_output) {
         ZEND_PARSE_PARAMETERS_NONE();
-        sc::php::return_guarded_string(return_value, [&] { return laid_out(ZEND_THIS).bytes(); });
+        std::string out;
+        sc::php::guarded_native([&] { out = restarted(ZEND_THIS).bytes(); });
+        if (EG(exception)) RETURN_THROWS();
+        RETURN_STRINGL(out.data(), out.size());
     }
 
     ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_page_count, 0, 0, IS_LONG, 0)

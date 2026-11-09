@@ -512,7 +512,7 @@ namespace {
             Z_PARAM_STR(filename)
         ZEND_PARSE_PARAMETERS_END();
         std::unique_ptr<excel::workbook> read;
-        sc::php::guarded([&] { read = std::make_unique<excel::workbook>(excel::read(std::string{view(filename)})); });
+        sc::php::guarded_native([&] { read = std::make_unique<excel::workbook>(excel::read(std::string{view(filename)})); });
         if (EG(exception)) RETURN_THROWS();
         object_init_ex(return_value, workbook_class);
         delete workbook_of(Z_OBJ_P(return_value))->book;
@@ -529,7 +529,7 @@ namespace {
             Z_PARAM_STR(bytes)
         ZEND_PARSE_PARAMETERS_END();
         std::unique_ptr<excel::workbook> read;
-        sc::php::guarded([&] { read = std::make_unique<excel::workbook>(excel::read_from(std::string{view(bytes)})); });
+        sc::php::guarded_native([&] { read = std::make_unique<excel::workbook>(excel::read_from(std::string{view(bytes)})); });
         if (EG(exception)) RETURN_THROWS();
         object_init_ex(return_value, workbook_class);
         delete workbook_of(Z_OBJ_P(return_value))->book;
@@ -545,7 +545,7 @@ namespace {
         ZEND_PARSE_PARAMETERS_START(1, 1)
             Z_PARAM_STR(filename)
         ZEND_PARSE_PARAMETERS_END();
-        sc::php::guarded([&] { excel::write(book(ZEND_THIS), std::string{view(filename)}); });
+        sc::php::guarded_native([&] { excel::write(book(ZEND_THIS), std::string{view(filename)}); });
     }
 
     ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_output, 0, 0, IS_STRING, 0)
@@ -554,7 +554,10 @@ namespace {
     // The .xlsx as a string: what save() writes.
     ZEND_NAMED_FUNCTION(workbook_output) {
         ZEND_PARSE_PARAMETERS_NONE();
-        sc::php::return_guarded_string(return_value, [&] { return excel::bytes(book(ZEND_THIS)); });
+        std::string out;
+        sc::php::guarded_native([&] { out = excel::bytes(book(ZEND_THIS)); });
+        if (EG(exception)) RETURN_THROWS();
+        RETURN_STRINGL(out.data(), out.size());
     }
 
     ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_add, 0, 1, SC\\Excel\\Sheet, 0)

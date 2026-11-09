@@ -18,7 +18,9 @@ $pdf = new SC\Html2Pdf($html, [
     'user_password' => 'open',          // and 'owner_password'
     'builtin_fonts' => true,            // PDF's built-in Helvetica, Times, Courier: nothing embedded
     'image_resolution' => 150,          // PNGs scaled down to this many pixels an inch (the default; 0 keeps them)
+    'time_limit' => 120,                // its own limit, seconds a call (default sc.time_limit, 300; 0: none)
 ]);
+// Long calls pause max_execution_time and give it back afterwards: no set_time_limit(0) needed
 $pdf->pageCount();
 $pdf->save('/tmp/invoice.pdf');
 header('Content-Type: application/pdf');

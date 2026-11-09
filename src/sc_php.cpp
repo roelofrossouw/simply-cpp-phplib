@@ -31,12 +31,24 @@ namespace sc::php {
     }
 }
 
+// sc.time_limit: a long native call's own limit in seconds (SC\Html2Pdf's 'time_limit' option
+// overrides it); 0 for none. See sc::php::time_limit.
+PHP_INI_BEGIN()
+    PHP_INI_ENTRY("sc.time_limit", "300", PHP_INI_ALL, nullptr)
+PHP_INI_END()
+
 static PHP_MINIT_FUNCTION(sc) {
+    REGISTER_INI_ENTRIES();
     zend_class_entry exception;
     INIT_NS_CLASS_ENTRY(exception, "SC", "Exception", nullptr);
     sc::php::exception_class = zend_register_internal_class_ex(&exception, zend_ce_exception);
     for (const auto &each: sc::php::areas())
         if (each.startup) each.startup();
+    return SUCCESS;
+}
+
+static PHP_MSHUTDOWN_FUNCTION(sc) {
+    UNREGISTER_INI_ENTRIES();
     return SUCCESS;
 }
 
@@ -46,6 +58,7 @@ static PHP_MINFO_FUNCTION(sc) {
     php_info_print_table_row(2, "Version", SC_PHPLIB_VERSION);
     php_info_print_table_row(2, "Provides", "SC\\Html2Pdf, SC\\Pdf, SC\\Rest, SC\\Excel\\Workbook, SC\\Passkey, SC\\svg_to_png(), SC\\base64_encode(), SC\\base64_decode()");
     php_info_print_table_end();
+    DISPLAY_INI_ENTRIES();
 }
 
 static zend_module_entry sc_module_entry = {
@@ -53,7 +66,7 @@ static zend_module_entry sc_module_entry = {
     "sc",
     nullptr, // the functions, filled in by get_module()
     PHP_MINIT(sc),
-    nullptr,
+    PHP_MSHUTDOWN(sc),
     nullptr,
     nullptr,
     PHP_MINFO(sc),

@@ -32,6 +32,12 @@ class Exception extends \Exception
  * in <img src="qr:,https://example.com/pay/123" style="width: 30mm">. It works in the header and
  * footer too; data too long for a QR code throws.
  *
+ * Laying out (the constructor) and writing (save(), output()) pause PHP's max_execution_time and
+ * set it going again with the time it had left: a long render isn't cut off by it, which used to
+ * end the whole php-fpm worker. They have a limit of their own instead, the option time_limit
+ * (by default the ini setting sc.time_limit, 300 seconds), counted from the start of each call:
+ * past it, or once the client has gone, the render stops and throws an Exception.
+ *
  * @link https://github.com/roelofrossouw/simply-cpp/wiki/HTML-to-PDF
  */
 class Html2Pdf
@@ -58,7 +64,8 @@ class Html2Pdf
      *     split_boxes?: bool,
      *     draw_margins?: bool,
      *     builtin_fonts?: bool,
-     *     image_resolution?: float
+     *     image_resolution?: float,
+     *     time_limit?: float
      * } $options size: the paper, in any case (default A4). margins: in mm (top 10, right 10,
      *     bottom 10, left 30; first_top 60, the first page's top, null for the same as the others).
      *     header, footer: HTML on every page. css: for the content, header and footer. base_url: what
@@ -70,7 +77,11 @@ class Html2Pdf
      *     built-in Helvetica, Times and Courier (CSS families map to them), embedding none.
      *     image_resolution: PNGs written at most about this many pixels per inch where they're
      *     shown (150, the default; 0 keeps them as they are). Each image is written once.
-     * @throws Exception For an unknown option or a value it can't use.
+     *     time_limit: seconds (wall clock) the constructor, save() and output() may each take
+     *     (0: none; default the ini setting sc.time_limit, 300); PHP's max_execution_time is
+     *     paused while they run.
+     * @throws Exception For an unknown option or a value it can't use, or a render stopped by its
+     *     time limit or because the client has gone.
      */
     public function __construct(string $html, array $options = [])
     {
@@ -79,7 +90,7 @@ class Html2Pdf
     /**
      * Writes the PDF to a file.
      *
-     * @throws Exception When the file can't be written.
+     * @throws Exception When the file can't be written, or it was stopped by its time limit (no file is left).
      */
     public function save(string $filename): void
     {
@@ -91,7 +102,7 @@ class Html2Pdf
      *     header('Content-Type: application/pdf');
      *     echo $pdf->output();
      *
-     * @throws Exception When it can't be written.
+     * @throws Exception When it can't be written, or it was stopped by its time limit.
      */
     public function output(): string
     {
