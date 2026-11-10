@@ -111,4 +111,5 @@ namespace sc::php {
     area qr_code_area();
     area rest_area();
     area mail_area();
+    area word_area();
 }

@@ -701,6 +701,42 @@ final class Csv
 }
 
 /**
+ * A Word document's (.docx) text, as a reader (a person, or a language model that can't open a
+ * .docx) would take it: a line per paragraph with its list number in front as Word shows it
+ * ("4.1.2 the Purchaser ..."), the numbering set on the paragraph or through its style; bullets get
+ * none. Tabs and line breaks kept; a table a row per line, its cells separated by " | "; content
+ * controls and text boxes included; deleted text (tracked changes), field codes and the copies kept
+ * for older readers left out; at most one blank line between paragraphs.
+ *
+ *     $text = SC\Word::text('/tmp/agreement.docx');
+ *
+ * @link https://github.com/roelofrossouw/simply-cpp/wiki/Office
+ */
+final class Word
+{
+    /**
+     * The text of the .docx at path.
+     *
+     * @param array{headers_footers?: bool, notes?: bool} $options headers_footers: the headers' and
+     *     footers' text after the body; notes: the footnotes' and endnotes' after that.
+     * @throws Exception For a file that isn't a .docx (an old .doc too), or an unknown option.
+     */
+    public static function text(string $path, array $options = []): string
+    {
+    }
+
+    /**
+     * The same for a .docx's bytes (an upload, a mail's attachment).
+     *
+     * @param array{headers_footers?: bool, notes?: bool} $options As for text().
+     * @throws Exception For bytes that aren't a .docx, or an unknown option.
+     */
+    public static function textFromString(string $bytes, array $options = []): string
+    {
+    }
+}
+
+/**
  * An email read in memory: an .eml file (MIME) or an Outlook .msg, with nothing written next to
  * it. A .msg reads like an .eml: From (the SMTP address when it has one), To, Cc, Subject, Date,
  * the text body, HTML from its HTML or its RTF, attachments and attached messages.

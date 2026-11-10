@@ -71,6 +71,9 @@ foreach ($mail->attachments() as $file)                  // label, type, charset
     $bytes = $mail->part($file['label']);                // decoded; partText() for text in UTF-8, message() for an attached one
 // also parts() (every part, labelled "1", "1.1", "1.2.1" as mailparse), header($name), headers(), SC\Mail::rtfToHtml($rtf)
 
+// Word documents (sc-office): the text, a line a paragraph with its list number as Word shows it ("4.1.2 ...")
+$text = SC\Word::text('/tmp/agreement.docx');          // or ::textFromString($bytes); ['headers_footers' => true, 'notes' => true]
+
 // Excel workbooks (sc-office): sheets of cells with their values and formulas, read and written
 $book = SC\Excel\Workbook::open('prices.xlsx');        // or ::fromString($bytes)
 foreach ($book as $name => $sheet)                       // the sheets, by name
