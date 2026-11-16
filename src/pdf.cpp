@@ -5,6 +5,7 @@
 //                                                   'permissions' => ['annotate' => true]]);
 //     SC\Pdf::decorate($report, $letterhead, $report);           // 'over' for a stamp
 //     SC\Pdf::protect($report, $report, ['user_password' => 'open']);
+//     SC\Pdf::decrypt($statement, $statement, 'open');          // the password taken off
 //     SC\Pdf::pageCount($report);
 //
 // Static methods: there's nothing to keep between calls. Every failure is an SC\Exception.
@@ -140,6 +141,28 @@ namespace {
         });
     }
 
+    ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_decrypt, 0, 2, IS_VOID, 0)
+        ZEND_ARG_TYPE_INFO(0, file, IS_STRING, 0)
+        ZEND_ARG_TYPE_INFO(0, output, IS_STRING, 0)
+        ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, password, IS_STRING, 0, "\"\"")
+    ZEND_END_ARG_INFO()
+
+    // file written again at output (which may be file) without encryption, opened with password
+    // (the user's or the owner's; none for an owner password only); one that isn't encrypted is
+    // copied as it is.
+    ZEND_NAMED_FUNCTION(pdf_decrypt) {
+        zend_string *file = nullptr, *output = nullptr, *password = nullptr;
+        ZEND_PARSE_PARAMETERS_START(2, 3)
+            Z_PARAM_STR(file)
+            Z_PARAM_STR(output)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_STR(password)
+        ZEND_PARSE_PARAMETERS_END();
+        sc::php::guarded_native([&] {
+            sc::pdflite::decrypt(path_of(file), path_of(output), password ? sc::php::view(password) : std::string_view{});
+        });
+    }
+
     ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_page_count, 0, 1, IS_LONG, 0)
         ZEND_ARG_TYPE_INFO(0, file, IS_STRING, 0)
         ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, password, IS_STRING, 0, "\"\"")
@@ -164,6 +187,7 @@ namespace {
         ZEND_NAMED_ME(merge, pdf_merge, arginfo_merge, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_NAMED_ME(decorate, pdf_decorate, arginfo_decorate, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_NAMED_ME(protect, pdf_protect, arginfo_protect, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_NAMED_ME(decrypt, pdf_decrypt, arginfo_decrypt, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_NAMED_ME(pageCount, pdf_page_count, arginfo_page_count, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_FE_END
     };

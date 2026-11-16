@@ -1,5 +1,5 @@
 <?php
-// SC\Pdf: merge(), decorate(), protect() and pageCount() on PDFs SC\Html2Pdf writes, and mistakes.
+// SC\Pdf: merge(), decorate(), protect(), decrypt() and pageCount() on PDFs SC\Html2Pdf writes, and mistakes.
 require __DIR__ . '/check.inc';
 
 $dir = sys_get_temp_dir() . '/sc-phplib-pdf-' . getmypid();
@@ -42,6 +42,35 @@ SC\Pdf::protect("$dir/locked.pdf", "$dir/relocked.pdf", ['owner_password' => 'mi
 check(SC\Pdf::pageCount("$dir/relocked.pdf") === 4, 'protected again with an owner password only: opens without one');
 SC\Pdf::merge([$report], "$dir/none.pdf", ['user_password' => '']);
 check(SC\Pdf::pageCount("$dir/none.pdf") === 3, 'an empty password: none added');
+
+// decrypt(): the password taken off, by the user's or the owner's; in place; one with an owner password only.
+$special = 'a&b"c';
+SC\Pdf::protect($report, "$dir/special.pdf", ['user_password' => $special, 'owner_password' => 'xyz']);
+check(throws(fn() => SC\Pdf::pageCount("$dir/special.pdf")), 'special: needs its password');
+SC\Pdf::decrypt("$dir/special.pdf", "$dir/open.pdf", $special);
+check(SC\Pdf::pageCount("$dir/open.pdf") === 3, 'decrypted by the user password: opens without one');
+$opened = file_get_contents("$dir/open.pdf");
+check(str_contains($opened, 'The report') || stripos($opened, bin2hex('The report')) !== false, 'its title readable (literal or hex)');
+check(!str_contains(file_get_contents("$dir/open.pdf"), '/Encrypt'), 'no /Encrypt left');
+SC\Pdf::decrypt("$dir/special.pdf", "$dir/open-owner.pdf", 'xyz');
+check(SC\Pdf::pageCount("$dir/open-owner.pdf") === 3, 'and by the owner password');
+copy("$dir/special.pdf", "$dir/in-place.pdf");
+SC\Pdf::decrypt("$dir/in-place.pdf", "$dir/in-place.pdf", $special);
+check(SC\Pdf::pageCount("$dir/in-place.pdf") === 3, 'in place');
+SC\Pdf::decrypt("$dir/relocked.pdf", "$dir/unrestricted.pdf");
+check(!str_contains(file_get_contents("$dir/unrestricted.pdf"), '/Encrypt'), 'an owner password only: taken off without a password');
+$message = '';
+try {
+    SC\Pdf::decrypt("$dir/special.pdf", "$dir/never.pdf", 'wrong');
+} catch (SC\Exception $e) {
+    $message = $e->getMessage();
+}
+check(str_contains($message, "the password doesn't open this file"), 'a wrong password: the message pageCount() gives');
+check(throws(fn() => SC\Pdf::decrypt("$dir/special.pdf", "$dir/never.pdf")), 'no password throws');
+check(!file_exists("$dir/never.pdf"), 'and writes nothing');
+SC\Pdf::decrypt($report, "$dir/copy.pdf");
+check(file_get_contents("$dir/copy.pdf") === file_get_contents($report), 'not encrypted: copied as it is');
+check(throws(fn() => SC\Pdf::decrypt(__FILE__, "$dir/never.pdf")), "a file that isn't a PDF throws");
 
 // Mistakes.
 check(throws(fn() => SC\Pdf::merge(["$dir/missing.pdf"], "$dir/x.pdf")), 'a missing file throws');

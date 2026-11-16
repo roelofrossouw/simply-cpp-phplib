@@ -161,12 +161,28 @@ final class Pdf
     }
 
     /**
-     * $file written again with passwords; $password opens it when it's encrypted already.
+     * $file written again with passwords; $password opens it when it's encrypted already. The
+     * whole document is kept: pages, forms, annotations, bookmarks, tagged structure.
      *
      * @param array{user_password?: string, owner_password?: string, permissions?: array<string, bool>} $protection
      * @throws Exception For no password given, or a file that can't be read.
      */
     public static function protect(string $file, string $output, array $protection, string $password = ''): void
+    {
+    }
+
+    /**
+     * $file written again at $output ($file itself is fine) without encryption, opened with
+     * $password: the user's or the owner's, or none for a file with only an owner password (its
+     * permissions go too). RC4, AES-128 and AES-256 (revisions 5 and 6). The whole document is
+     * kept: pages, forms and their values, annotations, bookmarks, tagged structure. A digital
+     * signature no longer matches afterwards (the bytes change). A file that isn't encrypted is
+     * copied as it is (left alone when $output is $file).
+     *
+     * @throws Exception "the password doesn't open this file" (as pageCount() says), for a file
+     *                   that isn't a PDF, or when $output can't be written (it's then left as it was).
+     */
+    public static function decrypt(string $file, string $output, string $password = ''): void
     {
     }
 
