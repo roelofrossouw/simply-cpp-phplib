@@ -187,9 +187,15 @@ final class Pdf
     }
 
     /**
-     * The file's pages; $password opens it when it needs one.
+     * The file's pages; $password (the user's or the owner's) opens it when it needs one. Encrypted
+     * files of the standard security handler, revisions 2 to 6 (RC4, AES-128, AES-256), open; one
+     * with no user password (only printing or copying refused) opens with any password or none.
      *
-     * @throws Exception For a file that can't be read.
+     * @throws Exception Its message tells three cases apart (the same for every SC\Pdf method):
+     *   "sc::pdflite: the password doesn't open this file": a password is needed, or this one is wrong;
+     *   "sc::pdflite: an encryption sc::pdflite can't read: ...": certificates or another security
+     *     handler, an unknown revision; no password will open it;
+     *   any other message: the file can't be read, isn't a PDF, or is damaged.
      */
     public static function pageCount(string $file, string $password = ''): int
     {

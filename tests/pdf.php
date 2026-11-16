@@ -72,6 +72,40 @@ SC\Pdf::decrypt($report, "$dir/copy.pdf");
 check(file_get_contents("$dir/copy.pdf") === file_get_contents($report), 'not encrypted: copied as it is');
 check(throws(fn() => SC\Pdf::decrypt(__FILE__, "$dir/never.pdf")), "a file that isn't a PDF throws");
 
+// Revisions 3 and 5 with no user password (printing and changes refused), in the same process as SC\Html2Pdf above:
+// libsc-html2pdf 1.6.6 exported its own sc-pdflite 4.6.3, which took over these calls and refused revision 5.
+$resource = __DIR__ . '/resource';
+$pages = function (string $file, string $password = ''): int|string { // the message instead, so a failure is a check, not the end
+    try {
+        return SC\Pdf::pageCount($file, $password);
+    } catch (SC\Exception $e) {
+        return $e->getMessage();
+    }
+};
+foreach (['aes-256-r5-empty.pdf', 'rc4-128-empty.pdf'] as $file) {
+    $opened = $pages("$resource/$file");
+    check($opened === 7, "$file: opens without a password (got " . var_export($opened, true) . ')');
+    check($pages("$resource/$file", 'anything') === 7, "$file: and with any password");
+    check(!throws(fn() => SC\Pdf::decrypt("$resource/$file", "$dir/$file")), "$file: decrypted without a password");
+    check(is_file("$dir/$file") && !str_contains(file_get_contents("$dir/$file"), '/Encrypt') && $pages("$dir/$file") === 7, "$file: and opens unencrypted");
+    check(!throws(fn() => SC\Pdf::merge(["$resource/$file", $report], "$dir/merged-$file")) && $pages("$dir/merged-$file") === 10, "$file: merged");
+}
+// Three kinds of failure: a password needed, encryption it can't read (no password helps), not a PDF.
+$failure = function (callable $call): string {
+    try {
+        $call();
+    } catch (SC\Exception $e) {
+        return $e->getMessage();
+    }
+    return '(opened)';
+};
+check($failure(fn() => SC\Pdf::pageCount("$dir/special.pdf")) === "sc::pdflite: the password doesn't open this file", 'needs a password: told so');
+$certificates = "$dir/certificates.pdf"; // the standard handler's name swapped for another of the same length
+file_put_contents($certificates, str_replace('/Filter /Standard', '/Filter /PubSec01', file_get_contents("$resource/rc4-40-plain.pdf")));
+check($failure(fn() => SC\Pdf::pageCount($certificates)) === "sc::pdflite: an encryption sc::pdflite can't read: the security handler PubSec01",
+      "another security handler: can't read, not a password");
+check(!str_contains($failure(fn() => SC\Pdf::pageCount(__FILE__)), 'password'), "not a PDF: no password asked");
+
 // Mistakes.
 check(throws(fn() => SC\Pdf::merge(["$dir/missing.pdf"], "$dir/x.pdf")), 'a missing file throws');
 check(!file_exists("$dir/x.pdf"), 'and writes nothing');
