@@ -12,8 +12,8 @@
 
 #include "php_glue.h"
 
-#include <pdflite/merge.h>
-#include <pdflite/reader.h>
+#include <sc/pdflite/merge.h>
+#include <sc/pdflite/reader.h>
 
 #include <algorithm>
 #include <filesystem>

@@ -25,7 +25,7 @@ extern "C" {
 }
 #include <zend_smart_str.h>
 
-#include <rest.h>
+#include <sc/http/rest.h>
 
 #include <cstring>
 #include <map>

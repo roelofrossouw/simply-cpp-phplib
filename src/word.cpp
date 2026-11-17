@@ -7,7 +7,7 @@
 
 #include "php_glue.h"
 
-#include <office.h>
+#include <sc/office/office.h>
 
 #include <stdexcept>
 

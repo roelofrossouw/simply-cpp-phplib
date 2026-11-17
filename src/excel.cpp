@@ -36,8 +36,8 @@
 
 #include "php_glue.h"
 
-#include <excel.h>
-#include <sc_csv.h>
+#include <sc/office/excel.h>
+#include <sc/office/sc_csv.h>
 
 #include <ext/spl/spl_array.h>
 #include <zend_interfaces.h>

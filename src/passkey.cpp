@@ -12,7 +12,7 @@
 
 #include "php_glue.h"
 
-#include <sc_passkey.h>
+#include <sc/passkey/sc_passkey.h>
 
 #include <cstring>
 #include <memory>

@@ -3,7 +3,7 @@
 
 #include "php_glue.h"
 
-#include <base64.h>
+#include <sc/core/base64.h>
 
 namespace {
     ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_base64, 0, 1, IS_STRING, 0)

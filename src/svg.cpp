@@ -4,8 +4,8 @@
 
 #include "php_glue.h"
 
-#include <color.h>
-#include <svg2png.h>
+#include <sc/core/color.h>
+#include <sc/image/svg2png.h>
 
 namespace {
     ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_svg_to_png, 0, 1, IS_STRING, 0)

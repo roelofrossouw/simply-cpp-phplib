@@ -15,7 +15,7 @@
 
 #include "php_glue.h"
 
-#include <html2pdf.h>
+#include <sc/html2pdf/html2pdf.h>
 
 #include <algorithm>
 #include <cmath>
