@@ -62,7 +62,7 @@ namespace {
             Z_PARAM_ARRAY_HT(given)
         ZEND_PARSE_PARAMETERS_END();
         std::string out;
-        sc::php::guarded_native([&] { out = sc::office::word::text_in(std::string{sc::php::view(bytes)}, options_of(given)); });
+        sc::php::guarded_native([&] { out = sc::office::word::text_from(std::string{sc::php::view(bytes)}, options_of(given)); });
         if (EG(exception)) RETURN_THROWS();
         RETURN_STRINGL(out.data(), out.size());
     }

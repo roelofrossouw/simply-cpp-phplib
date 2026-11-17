@@ -1,4 +1,4 @@
-// SC\QrCode: sc-qrencode's sc::qr::code (libsc-qrencode's shared library, from its package).
+// SC\QrCode: sc-qrencode's sc::qrencode::code (libsc-qrencode's shared library, from its package).
 //
 //     $qr = new SC\QrCode('https://example.com/invoice/123');
 //     $svg = $qr->svg(30);        // 30 mm square; svg() alone has a viewBox only and scales
@@ -22,7 +22,7 @@ namespace {
     zend_object_handlers handlers;
 
     struct qr_code_object {
-        sc::qr::code *code;
+        sc::qrencode::code *code;
         zend_object std;
     };
 
@@ -44,27 +44,27 @@ namespace {
         zend_object_std_dtor(object);
     }
 
-    sc::qr::correction correction_of(const zend_string *name) {
-        if (!name) return sc::qr::correction::medium;
+    sc::qrencode::correction correction_of(const zend_string *name) {
+        if (!name) return sc::qrencode::correction::medium;
         const auto text = sc::php::view(name);
-        if (text == "low") return sc::qr::correction::low;
-        if (text == "medium") return sc::qr::correction::medium;
-        if (text == "quartile") return sc::qr::correction::quartile;
-        if (text == "high") return sc::qr::correction::high;
+        if (text == "low") return sc::qrencode::correction::low;
+        if (text == "medium") return sc::qrencode::correction::medium;
+        if (text == "quartile") return sc::qrencode::correction::quartile;
+        if (text == "high") return sc::qrencode::correction::high;
         throw std::invalid_argument{"SC\\QrCode: the correction is 'low', 'medium', 'quartile' or 'high'"};
     }
 
-    const char *name_of(const sc::qr::correction level) {
+    const char *name_of(const sc::qrencode::correction level) {
         switch (level) {
-            case sc::qr::correction::low: return "low";
-            case sc::qr::correction::medium: return "medium";
-            case sc::qr::correction::quartile: return "quartile";
-            case sc::qr::correction::high: return "high";
+            case sc::qrencode::correction::low: return "low";
+            case sc::qrencode::correction::medium: return "medium";
+            case sc::qrencode::correction::quartile: return "quartile";
+            case sc::qrencode::correction::high: return "high";
         }
         return "medium";
     }
 
-    const sc::qr::code &made(zval *self) {
+    const sc::qrencode::code &made(zval *self) {
         const auto *code = object_of(Z_OBJ_P(self))->code;
         if (!code) throw std::logic_error{"SC\\QrCode: not constructed"};
         return *code;
@@ -89,7 +89,7 @@ namespace {
         ZEND_PARSE_PARAMETERS_END();
         auto *self = object_of(Z_OBJ_P(ZEND_THIS));
         sc::php::guarded([&] {
-            auto code = std::make_unique<sc::qr::code>(sc::php::view(text), correction_of(correction));
+            auto code = std::make_unique<sc::qrencode::code>(sc::php::view(text), correction_of(correction));
             delete self->code;
             self->code = code.release();
         });
@@ -108,8 +108,8 @@ namespace {
             Z_PARAM_OPTIONAL
             Z_PARAM_STR(correction)
         ZEND_PARSE_PARAMETERS_END();
-        std::unique_ptr<sc::qr::code> code;
-        sc::php::guarded([&] { code = std::make_unique<sc::qr::code>(sc::qr::code::binary(sc::php::view(bytes), correction_of(correction))); });
+        std::unique_ptr<sc::qrencode::code> code;
+        sc::php::guarded([&] { code = std::make_unique<sc::qrencode::code>(sc::qrencode::code::binary(sc::php::view(bytes), correction_of(correction))); });
         if (EG(exception)) RETURN_THROWS();
         object_init_ex(return_value, qr_code_class);
         delete object_of(Z_OBJ_P(return_value))->code;
