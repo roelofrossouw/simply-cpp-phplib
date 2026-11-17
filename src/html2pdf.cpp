@@ -111,7 +111,7 @@ namespace {
         }
         zval *user = find(given, "user_password"), *owner = find(given, "owner_password");
         if (user || owner) {
-            sc::pdf::protection locked;
+            sc::pdflite::protection locked;
             if (user) locked.user_password = text_of(user);
             if (owner) locked.owner_password = text_of(owner);
             if (!locked.user_password.empty() || !locked.owner_password.empty()) settings.protection = locked;
