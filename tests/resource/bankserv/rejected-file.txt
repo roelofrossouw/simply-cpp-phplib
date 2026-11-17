@@ -1,0 +1,56 @@
+ªü 12345     00150560
+ç12345    COMPANY 12345                            FIRST NATIONAL BANK OF S.A LTD          RUN DATE 2026/03/02  09:15     PAGE     1
+çBRANCH   255  REMOTE BANKING SERVICE         INPUT VALIDATE - HEADER/TRAILER RECORDS     EFF DATE 2026/03/02
+ç       F I E L D                    H E A D E R   R E C O R D                           T R A I L E R   R E C O R D
+ç D E S C R I P T I O N   CONTENTS       REASON IF INVALID                   CONTENTS         REASON IF INVALID
+çRECORD IDENTIFIER         4                                                 92
+çUSER CODE                M999                                               M999
+çCUSTOMER SERVICE NAME    OTHER CO     M999                                  N/A
+çCREATION DATE            2026/03/01                                         N/A
+çPURGE DATE               2026/03/09                                         N/A
+çFIRST ACTION DATE        2026/03/02REJECTED : 6 ACTION DATE < CREATION DATE 2026/03/012026/03/02
+çLAST ACTION DATE         2026/03/02                                         2026/03/02
+çFIRST SEQUENCE NUMBER     00001                                              00001
+çLAST SEQUENCE NUMBER     N/A                                                 00004
+çUSER GENERATION NUMBER   0200                                               NEXT GENERATION NUMBER 0201
+çSERVICE TYPE             SAMEDAY                                            N/A
+çNUMBER OF DEBIT RECORDS  N/A                                                 000003
+çNUMBER OF CREDIT RECORDS N/A                                                 000001
+çNUMBER OF CONTRA RECORDS N/A                                                 00001
+çTOTAL DEBIT VALUE        N/A                                                 00000250000
+çTOTAL CREDIT VALUE       N/A                                                 00000250000
+çHASH TOTAL OF HOMING     N/A                                                000012345678
+çACCOUNT NUMBERS
+çTOTAL NUMBER OF   1. RECEIVED      000002    TOTAL VALUE OF  1. RECEIVED     00000030000   ****** DATA SET REJECTED ****
+çTRANSACTIONS      2. ACCEPTED      000000                    2. ACCEPTED     00000000000
+ç                  3. REJECTED      000002                    3. REJECTED     00000030000
+
+çEND OF REPORT 00101
+ªü 12345     00150560
+ç12345    COMPANY 12345                            FIRST NATIONAL BANK OF S.A LTD          RUN DATE 2026/03/02  09:15     PAGE     1
+çBRANCH   255  REMOTE BANKING SERVICE         PAYMENTS AND COLLECTIONS TRANSACTIONS       EFF DATE 2026/03/02
+çTRANSACTION STATUS : REJECTED ON LOAD       SERVICE TYPE       :  SAMEDAY
+çCUSTOMER SERVICE   : ZPC00000000000000001   BATCH NUMBER       :   0200
+NOMINATED ACC NO   : 00000000062000000001   NOMINATED BRANCH   :  250655
+çSEQ NO  HOMING ACCOUNT NAME         ACC HOMING  HOMING               ENT          AMOUNT  ACTION             USER REFERENCE
+                                    TYP BRANCH  ACCOUNT NUMBER       CLS                  DATE
+ç     1  CAF… OWNER                   2  250655  62000000011          44D          100.00  2026/03/02  OTHER MOB  OWD2001
+                                                                                 REJECT CODE: 267 DESCRIPTION: ALL TXNS REJECTED
+ªü 12345     00150560
+ç12345    COMPANY 12345                            FIRST NATIONAL BANK OF S.A LTD          RUN DATE 2026/03/02  09:15     PAGE     2
+çBRANCH   255  REMOTE BANKING SERVICE         PAYMENTS AND COLLECTIONS TRANSACTIONS       EFF DATE 2026/03/02
+çTRANSACTION STATUS : REJECTED ON LOAD       SERVICE TYPE       :  SAMEDAY
+çCUSTOMER SERVICE   : ZPC00000000000000001   BATCH NUMBER       :   0200
+NOMINATED ACC NO   : 00000000062000000001   NOMINATED BRANCH   :  250655
+çSEQ NO  HOMING ACCOUNT NAME         ACC HOMING  HOMING               ENT          AMOUNT  ACTION             USER REFERENCE
+                                    TYP BRANCH  ACCOUNT NUMBER       CLS                  DATE
+ç     2  SECOND PAGE PTY LTD          1  051001  9000000012           44D          200.00  2026/03/02  OTHER MOB  OWD2002
+                                                                                 REJECT CODE: 267 DESCRIPTION: ALL TXNS REJECTED
+ç
+çBATCH NO    :  0200                 VALUE DEBIT:         300.00  NO DEBIT:       2  VALUE CREDIT:              0  NO CREDIT:     0
+ç
+çSTATUS      : REJECTED ON LOAD      VALUE DEBIT:         300.00  NO DEBIT:       2  VALUE CREDIT:              0  NO CREDIT:     0
+ç
+çSOMETHING THE READER HAS NOT SEEN
+
+çEND OF REPORT 00102

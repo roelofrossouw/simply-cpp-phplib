@@ -1,0 +1,75 @@
+»Ÿ 12345     00150560
+ 12345    COMPANY 12345                            FIRST NATIONAL BANK OF S.A LTD          RUN DATE 2026/03/02  09:15     PAGE     1
+ BRANCH   255  REMOTE BANKING SERVICE         INPUT VALIDATE - HEADER/TRAILER RECORDS     EFF DATE 2026/03/02
+        F I E L D                    H E A D E R   R E C O R D                           T R A I L E R   R E C O R D
+  D E S C R I P T I O N   CONTENTS       REASON IF INVALID                   CONTENTS         REASON IF INVALID
+ RECORD IDENTIFIER         4                                                 92
+ USER CODE                K999                                               K999
+ CUSTOMER SERVICE NAME    EXAMPLE CO   K999                                  N/A
+ CREATION DATE            2026/03/01                                         N/A
+ PURGE DATE               2026/03/09                                         N/A
+ FIRST ACTION DATE        2026/03/02                                         2026/03/02
+ LAST ACTION DATE         2026/03/02                                         2026/03/02
+ FIRST SEQUENCE NUMBER     00001                                              00001
+ LAST SEQUENCE NUMBER     N/A                                                 00004
+ USER GENERATION NUMBER   0123                                               NEXT GENERATION NUMBER0124
+ SERVICE TYPE             SAMEDAY                                            N/A
+ NUMBER OF DEBIT RECORDS  N/A                                                 000003
+ NUMBER OF CREDIT RECORDS N/A                                                 000001
+ NUMBER OF CONTRA RECORDS N/A                                                 00001
+ TOTAL DEBIT VALUE        N/A                                                 00000250000
+ TOTAL CREDIT VALUE       N/A                                                 00000250000
+ HASH TOTAL OF HOMING     N/A                                                000012345678
+ ACCOUNT NUMBERS
+ TOTAL NUMBER OF   1. RECEIVED      000003    TOTAL VALUE OF  1. RECEIVED     00000250000   ****** DATA SET ACCEPTED ****
+ TRANSACTIONS      2. ACCEPTED      000002                    2. ACCEPTED     00000150000
+                   3. REJECTED      000001                    3. REJECTED     00000100000
+
+ END OF REPORT 00101
+»Ÿ 12345     00150560
+ 12345    COMPANY 12345                            FIRST NATIONAL BANK OF S.A LTD          RUN DATE 2026/03/02  09:15     PAGE     1
+ BRANCH   255  REMOTE BANKING SERVICE         PAYMENTS AND COLLECTIONS TRANSACTIONS       EFF DATE 2026/03/02
+ TRANSACTION STATUS : REJECTED VALIDATION    SERVICE TYPE       :  SAMEDAY
+ CUSTOMER SERVICE   : ZPC00000000000000001   BATCH NUMBER       :   0123
+ NOMINATED ACC NO   : 00000000062000000001   NOMINATED BRANCH   :  250655
+ SEQ NO  HOMING ACCOUNT NAME         ACC HOMING  HOMING               ENT          AMOUNT  ACTION             USER REFERENCE
+                                     TYP BRANCH  ACCOUNT NUMBER       CLS                  DATE
+      2  J DOE                        1  250655  62000000002          44D         1000.00  2026/03/02  EXAMPLE CO  OWD1001
+                                                                                  REJECT CODE: 152 DESCRIPTION: HOM ACCT TYPE INVAL
+ 
+ BATCH NO    :  0123                 VALUE DEBIT:        1000.00  NO DEBIT:       1  VALUE CREDIT:           0.00  NO CREDIT:     0
+ 
+ SERVICE TYPE: SAMEDAY               VALUE DEBIT:        1000.00  NO DEBIT:       1  VALUE CREDIT:           0.00  NO CREDIT:     0
+ 
+ STATUS      : REJECTED VALIDATION   VALUE DEBIT:        1000.00  NO DEBIT:       1  VALUE CREDIT:           0.00  NO CREDIT:     0
+ 
+ NOM ACC NO  : 00000000062000000001  VALUE DEBIT:        1000.00  NO DEBIT:       1  VALUE CREDIT:           0.00  NO CREDIT:     0
+ 
+ CUST SERVICE: ZPC00000000000000001  VALUE DEBIT:        1000.00  NO DEBIT:       1  VALUE CREDIT:           0.00  NO CREDIT:     0
+ 
+
+ END OF REPORT 00102
+»Ÿ 12345     00150560
+ 12345    COMPANY 12345                            FIRST NATIONAL BANK OF S.A LTD          RUN DATE 2026/03/02  09:15     PAGE     1
+ BRANCH   255  REMOTE BANKING SERVICE         PAYMENTS AND COLLECTIONS TRANSACTIONS       EFF DATE 2026/03/02
+ TRANSACTION STATUS : ACCEPTED ON LOAD       SERVICE TYPE       :  SAMEDAY
+ CUSTOMER SERVICE   : ZPC00000000000000001   BATCH NUMBER       :   0123
+ NOMINATED ACC NO   : 00000000062000000001   NOMINATED BRANCH   :  250655
+ SEQ NO  HOMING ACCOUNT NAME         ACC HOMING  HOMING               ENT          AMOUNT  ACTION             USER REFERENCE
+                                     TYP BRANCH  ACCOUNT NUMBER       CLS                  DATE
+      3  A N OTHER                    1  250655  62000000003          44D          500.00  2026/03/03  EXAMPLE CO  OWD1002
+                                                                                  REJECT CODE:  44 DESCRIPTION: ACTDTE ADJ NXT BUS/D
+      4  ONEPAY ACCOUNT               1  250655  62000000001          44C         1500.00  2026/03/02  ONE0000123CONTRA 1
+ 
+ BATCH NO    :  0123                 VALUE DEBIT:        1500.00  NO DEBIT:       2  VALUE CREDIT:        1500.00  NO CREDIT:     1
+ 
+ SERVICE TYPE: SAMEDAY               VALUE DEBIT:        1500.00  NO DEBIT:       2  VALUE CREDIT:        1500.00  NO CREDIT:     1
+ 
+ STATUS      : ACCEPTED ON LOAD      VALUE DEBIT:        1500.00  NO DEBIT:       2  VALUE CREDIT:        1500.00  NO CREDIT:     1
+ 
+ NOM ACC NO  : 00000000062000000001  VALUE DEBIT:        1500.00  NO DEBIT:       2  VALUE CREDIT:        1500.00  NO CREDIT:     1
+ 
+ CUST SERVICE: ZPC00000000000000001  VALUE DEBIT:        1500.00  NO DEBIT:       2  VALUE CREDIT:        1500.00  NO CREDIT:     1
+ 
+
+ END OF REPORT 00102

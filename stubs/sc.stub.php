@@ -723,6 +723,57 @@ final class Csv
 }
 
 /**
+ * Bankserv (South African ACB) files: the bank's load report on a debit order or payment file sent
+ * host-to-host (FNB's FTPTCPIP.FNBLOAD.G####V00), read into its parts. Amounts are whole cents
+ * (int); text is UTF-8; dates are YYYY-MM-DD (header fields as printed). Nothing throws on what the
+ * file holds: a line it doesn't place is kept in 'unparsed'.
+ *
+ * reports[] has one entry per report or transaction status, 'kind' telling which:
+ *   header_trailer  INPUT VALIDATE - HEADER/TRAILER RECORDS: 'fields' (name, header, header_reason,
+ *                   trailer, trailer_reason), 'generation', 'next_generation', 'received',
+ *                   'accepted', 'rejected' (count and cents), 'data_set' ("DATA SET ACCEPTED"),
+ *                   'messages' (label and text, e.g. OVERALL FILE STATUS: REJECTED).
+ *   transactions    PAYMENTS AND COLLECTIONS TRANSACTIONS, one per 'status' (ACCEPTED ON LOAD,
+ *                   ACCEPTED VALIDATION, REJECTED VALIDATION, REJECTED ON LOAD, PENDING LIMIT AUTH,
+ *                   REJECT DUE TO LIMIT): 'service_type', 'customer_service', 'batch',
+ *                   'nominated_account', 'nominated_branch', 'records' and 'summaries'.
+ *   realtime        REAL-TIME PROCESSING TRANSACTIONS: the same with 'user_code'; its summaries'
+ *                   'counts' says rejected, accepted or total.
+ * A record: sequence, name, account_type, branch, account, entry_class, side ("D" or "C"), cents,
+ * action_date, reference, own_kind ("OWD", "OWC" or null) and own_id (1web's id in the reference),
+ * contra_batch (the contra record's batch), reject_code, reject_description, notes.
+ * outcome: what the file says about its batch, as f.h2h_loadreport() reads it: realtime, rejected,
+ * user_code, generation, received, accepted, rejected_count, adjusted (OWD records with a reject code
+ * outside REJECTED VALIDATION, such as ACTDTE ADJ NXT BUS/D).
+ *
+ *     $report = SC\Bankserv::loadReportFile($path);
+ *     foreach ($report['reports'] as $section)
+ *         foreach ($section['records'] as $record)
+ *             if ($record['own_kind'] === 'OWD') ...; // $section['status'], $record['reject_code']
+ */
+final class Bankserv
+{
+    /**
+     * A load report's contents (bytes as received) read into its parts.
+     *
+     * @return array{outcome: array{realtime: bool, rejected: bool, user_code: ?string, generation: ?string, received: int, accepted: int, rejected_count: int, adjusted: int},
+     *     reports: list<array<string, mixed>>, unparsed: list<array{report: ?int, line: int, text: string}>, lines: int}
+     */
+    public static function loadReport(string $contents): array
+    {
+    }
+
+    /**
+     * The same for the file at path.
+     *
+     * @throws Exception When the file can't be read.
+     */
+    public static function loadReportFile(string $path): array
+    {
+    }
+}
+
+/**
  * A Word document's (.docx) text, as a reader (a person, or a language model that can't open a
  * .docx) would take it: a line per paragraph with its list number in front as Word shows it
  * ("4.1.2 the Purchaser ..."), the numbering set on the paragraph or through its style; bullets get

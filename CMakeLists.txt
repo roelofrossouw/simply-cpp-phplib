@@ -38,6 +38,8 @@ find_or_install_package(sc-bootstrap-email simply-cpp-bootstrap-email-dev simply
 find_or_install_package(sc-qrencode simply-cpp-qrencode-dev simply-cpp-qrencode 1.4.0)
 # SC\Mail: emails read in memory, .eml and Outlook .msg (sc-mime 1.2.0), RTF bodies as HTML.
 find_or_install_package(sc-mime simply-cpp-mime-dev simply-cpp-mime 1.5.0)
+# SC\Bankserv: Bankserv (ACB) load reports read into fields, records and totals.
+find_or_install_package(sc-bankserv simply-cpp-bankserv-dev simply-cpp-bankserv 1.0.0)
 
 ## PHP ##
 # An extension is built for one PHP version: the one each Ubuntu release ships (jammy 8.1, noble
@@ -74,10 +76,10 @@ message(STATUS "Building for PHP ${SC_PHPLIB_PHP_VERSION} (module API ${SC_PHPLI
 # sc.so, loaded by PHP with dlopen(): no "lib" prefix, no link against PHP (its symbols resolve at
 # load time; macOS needs that said). It links the modules' shared libraries themselves, not their
 # CMake targets, which would also bring the static libraries under them into it.
-add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/passkey.cpp src/bootstrap_email.cpp src/qr_code.cpp src/rest.cpp src/mail.cpp src/word.cpp src/native_time.cpp src/php_glue.h)
+add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/passkey.cpp src/bootstrap_email.cpp src/qr_code.cpp src/rest.cpp src/mail.cpp src/word.cpp src/bankserv.cpp src/native_time.cpp src/php_glue.h)
 target_compile_options(sc PRIVATE ${SC_PHPLIB_PHP_INCLUDES})
 target_compile_definitions(sc PRIVATE SC_PHPLIB_VERSION="${SC_VERSION}")
-foreach (module sc-core sc-http sc-image sc-html2pdf sc-pdflite sc-office sc-passkey sc-bootstrap-email sc-qrencode sc-mime)
+foreach (module sc-core sc-http sc-image sc-html2pdf sc-pdflite sc-office sc-passkey sc-bootstrap-email sc-qrencode sc-mime sc-bankserv)
     target_link_libraries(sc PRIVATE $<TARGET_LINKER_FILE:sc::${module}-shared>)
     target_include_directories(sc PRIVATE $<TARGET_PROPERTY:sc::${module}-shared,INTERFACE_INCLUDE_DIRECTORIES>)
 endforeach ()
@@ -130,4 +132,4 @@ set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONFLICTS "html2pdf-php")
 # links are the deploys' own copies in /usr/local/lib, which no package owns.
 package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common"
         "simply-cpp (>= 2.2.0~)" "simply-cpp-http (>= 1.2.0~)" "simply-cpp-image (>= 5.6.0~)" "simply-cpp-html2pdf (>= 1.7.0~)" "simply-cpp-pdflite (>= 4.8.0~)" "simply-cpp-office (>= 1.13.0~)" "simply-cpp-passkey (>= 1.1.0~)"
-        "simply-cpp-bootstrap-email (>= 1.1.0~)" "simply-cpp-qrencode (>= 1.4.0~)" "simply-cpp-mime (>= 1.5.0~)")
+        "simply-cpp-bootstrap-email (>= 1.1.0~)" "simply-cpp-qrencode (>= 1.4.0~)" "simply-cpp-mime (>= 1.5.0~)" "simply-cpp-bankserv (>= 1.0.0~)")

@@ -1,0 +1,19 @@
+»Ÿ RTP01
+ RTP01    COMPANY 12345                            FIRST NATIONAL BANK OF S.A LTD          RUN DATE 2026/03/02  10:05     PAGE     1
+ BRANCH  0255  REMOTE BANKING SERVICE           REAL-TIME PROCESSING TRANSACTIONS          EFF DATE 2026/03/02
+ TRANSACTION STATUS : ACCEPTED
+ CUSTOMER USER CODE : K999                   BATCH NUMBER       : 0042
+ NOMINATED ACC NO   : 000000062000000001     NOMINATED BRANCH   : 250655
+ SEQ NO  HOMING ACCOUNT NAME         ACC HOMING  HOMING               ENT          AMOUNT  ACTION             USER REFERENCE
+                                     TYP BRANCH  ACCOUNT NUMBER       CLS                  DATE
+
+      1  ONEPAY                       1  250655  62000000001          44D          750.00  2026/03/02  ONE0000042CONTRA 1
+      2  PAYEE ONE                    1  250655  62000000021          44C          750.00  2026/03/02  EXAMPLE CO  OWC3001
+
+
+ USER CODE   :  K999                 ACC DR VALUE:         750.00  ACC NO DR:      1  ACC CR VALUE:         750.00  ACC NO CR:      1
+
+
+ BATCH NO    :  0042                 REJ DR VALUE:           0.00  REJ NO DR:      0  REJ CR VALUE:           0.00  REJ NO CR:      0
+ USER CODE   :  K999                 ACC DR VALUE:         750.00  ACC NO DR:      1  ACC CR VALUE:         750.00  ACC NO CR:      1
+ STATUS      :  ACCEPTED             TOT DR VALUE:         750.00  TOT NO DR:      1  TOT CR VALUE:         750.00  TOT NO CR:      1
