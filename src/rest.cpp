@@ -1,4 +1,4 @@
-// SC\Rest: sc-http's sc::rest (libsc-http's shared library, from its package), for REST and SOAP
+// SC\Rest: sc-http's sc::http::client (libsc-http's shared library, from its package), for REST and SOAP
 // calls: TLS checked by default, timeouts always, and nothing written to the logs (error() says
 // what went wrong).
 //
@@ -25,7 +25,7 @@ extern "C" {
 }
 #include <zend_smart_str.h>
 
-#include <sc/http/rest.h>
+#include <sc/http/client.h>
 
 #include <cstring>
 #include <map>
@@ -107,7 +107,7 @@ namespace {
     }
 
     // An array's pairs as http_build_query() makes them: nested keys as prefix[key].
-    void pairs_of(HashTable *table, const std::string &prefix, sc::rest::fields &out) {
+    void pairs_of(HashTable *table, const std::string &prefix, sc::http::client::fields &out) {
         zend_string *key = nullptr;
         zend_ulong index = 0;
         zval *value = nullptr;
@@ -126,8 +126,8 @@ namespace {
         ZEND_HASH_FOREACH_END();
     }
 
-    sc::rest::fields pairs_of(zval *array) {
-        sc::rest::fields out;
+    sc::http::client::fields pairs_of(zval *array) {
+        sc::http::client::fields out;
         if (array) pairs_of(Z_ARRVAL_P(array), "", out);
         return out;
     }
@@ -146,9 +146,9 @@ namespace {
     }
 
     // One request with the object's settings; its answer, and what it got kept in s.
-    std::string perform(settings &s, const std::string &method, const sc::rest::fields &query, const std::string *body,
-                        const std::vector<sc::rest::part> *parts) {
-        sc::rest request{s.url};
+    std::string perform(settings &s, const std::string &method, const sc::http::client::fields &query, const std::string *body,
+                        const std::vector<sc::http::client::part> *parts) {
+        sc::http::client request{s.url};
         request.quiet();
         for (const auto &[name, value]: s.headers) request.header(name, value);
         request.timeout(s.timeout).connect_timeout(s.connect_timeout).idle_timeout(s.idle);
@@ -172,7 +172,7 @@ namespace {
         s.error_code = request.error_code();
         s.effective_url = request.effective_url();
         s.total_time = request.total_time();
-        // No response: an empty string, not sc::rest's {"error": ...} (error() has it).
+        // No response: an empty string, not sc::http::client's {"error": ...} (error() has it).
         if (s.status == 0) answer.clear();
         return answer;
     }
@@ -184,7 +184,7 @@ namespace {
         if (Z_TYPE_P(body) == IS_STRING) return std::string{Z_STRVAL_P(body), Z_STRLEN_P(body)};
         const auto type = header_value(s, "content-type");
         if (type.starts_with("multipart/form-data")) throw std::invalid_argument{"SC\\Rest: a multipart body is postMultipart()'s"};
-        if (type.starts_with("application/x-www-form-urlencoded")) return sc::rest::form_encode(pairs_of(body));
+        if (type.starts_with("application/x-www-form-urlencoded")) return sc::http::client::form_encode(pairs_of(body));
         return json_of(body);
     }
 
@@ -455,7 +455,7 @@ namespace {
             Z_PARAM_ARRAY(query)
         ZEND_PARSE_PARAMETERS_END();
         request(return_value, [&] {
-            std::vector<sc::rest::part> parts;
+            std::vector<sc::http::client::part> parts;
             zend_string *key = nullptr;
             zend_ulong index = 0;
             zval *value = nullptr;
@@ -470,7 +470,7 @@ namespace {
                 ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(files), index, key, value) {
                     ZVAL_DEREF(value);
                     const std::string name = key ? std::string{sc::php::view(key)} : std::to_string(index);
-                    sc::rest::part part{.name = name};
+                    sc::http::client::part part{.name = name};
                     if (Z_TYPE_P(value) == IS_STRING) {
                         part.file = sc::php::text_of(value);
                     } else if (Z_TYPE_P(value) == IS_ARRAY) {

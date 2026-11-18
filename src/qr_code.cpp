@@ -10,7 +10,7 @@
 
 #include "php_glue.h"
 
-#include <sc/qrencode/sc_qrencode.h>
+#include <sc/qrencode/qrencode.h>
 
 #include <cstring>
 #include <memory>

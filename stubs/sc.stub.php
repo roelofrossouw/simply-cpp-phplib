@@ -391,7 +391,7 @@ final class BootstrapEmail
 }
 
 /**
- * HTTP for REST and SOAP calls (sc-http's sc::rest over libcurl): TLS certificates and host names
+ * HTTP for REST and SOAP calls (sc-http's sc::http::client over libcurl): TLS certificates and host names
  * checked by default, timeouts always, and nothing written to the logs; error() says what went
  * wrong. Only http:// and https:// URLs, redirects included.
  *

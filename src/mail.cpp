@@ -14,7 +14,7 @@
 
 #include "php_glue.h"
 
-#include <sc/mime/sc_mime.h>
+#include <sc/mime/mime.h>
 
 #include <cstring>
 #include <fstream>

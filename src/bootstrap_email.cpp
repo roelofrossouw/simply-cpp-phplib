@@ -7,7 +7,7 @@
 
 #include "php_glue.h"
 
-#include <sc/bootstrap-email/sc_bootstrap_email.h>
+#include <sc/bootstrap-email/bootstrap_email.h>
 
 namespace {
     ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_format, 0, 1, IS_STRING, 0)
