@@ -24,7 +24,7 @@ find_or_install_package(sc-core simply-cpp-dev simply-cpp 3.0.0)
 # SC\Rest: sc::http::client (sc-http 1.1.0: queries, forms, multipart, client keys with a passphrase, redirects,
 # idle limits, curl's error numbers, compressed answers).
 find_or_install_package(sc-http simply-cpp-http-dev simply-cpp-http 3.0.0)
-find_or_install_package(sc-image simply-cpp-image-dev simply-cpp-image 6.0.0)
+find_or_install_package(sc-image simply-cpp-image-dev simply-cpp-image 6.1.0)
 find_or_install_package(sc-html2pdf simply-cpp-html2pdf-dev simply-cpp-html2pdf 2.1.0) # 1.6.7: exports only its own code (its sc-pdflite copy took over libsc-pdflite's); 1.6.0: the check SC\Html2Pdf's time limit uses; 1.6.1: #section# images; 1.6.2: images in table cells sized as shown; 1.6.4: one-sided borders without hairlines in Adobe Reader
 # SC\Pdf: existing PDFs read, merged, decorated and protected.
 find_or_install_package(sc-pdflite simply-cpp-pdflite-dev simply-cpp-pdflite 5.0.0)
@@ -131,5 +131,5 @@ set(CPACK_DEBIAN_RUNTIME_PACKAGE_CONFLICTS "html2pdf-php")
 # The modules' packages are named, not left to dpkg-shlibdeps: on a build server the libraries it
 # links are the deploys' own copies in /usr/local/lib, which no package owns.
 package_sc_module(DEPENDS "phpapi-${SC_PHPLIB_PHP_API}" "php${SC_PHPLIB_PHP_MINOR}-common"
-        "simply-cpp (>= 3.0.0~)" "simply-cpp-http (>= 3.0.0~)" "simply-cpp-image (>= 6.0.0~)" "simply-cpp-html2pdf (>= 2.1.0~)" "simply-cpp-pdflite (>= 5.0.0~)" "simply-cpp-office (>= 3.0.0~)" "simply-cpp-passkey (>= 3.0.0~)" "simply-cpp-passkey-tools (>= 2.0.0~)"
+        "simply-cpp (>= 3.0.0~)" "simply-cpp-http (>= 3.0.0~)" "simply-cpp-image (>= 6.1.0~)" "simply-cpp-html2pdf (>= 2.1.0~)" "simply-cpp-pdflite (>= 5.0.0~)" "simply-cpp-office (>= 3.0.0~)" "simply-cpp-passkey (>= 3.0.0~)" "simply-cpp-passkey-tools (>= 2.0.0~)"
         "simply-cpp-bootstrap-email (>= 3.0.0~)" "simply-cpp-qrencode (>= 4.0.0~)" "simply-cpp-mime (>= 3.0.0~)" "simply-cpp-bankserv (>= 3.0.0~)")
