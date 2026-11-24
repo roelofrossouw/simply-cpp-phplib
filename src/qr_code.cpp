@@ -8,6 +8,7 @@
 // The correction level is 'low', 'medium' (the default), 'quartile' or 'high'. A failure is an
 // SC\Exception.
 
+#include <cstddef>
 #include "php_glue.h"
 
 #include <sc/qrencode/qrencode.h>
@@ -27,7 +28,7 @@ namespace {
     };
 
     qr_code_object *object_of(zend_object *object) {
-        return reinterpret_cast<qr_code_object *>(reinterpret_cast<char *>(object) - XtOffsetOf(qr_code_object, std));
+        return reinterpret_cast<qr_code_object *>(reinterpret_cast<char *>(object) - offsetof(qr_code_object, std));
     }
 
     zend_object *create(zend_class_entry *type) {
@@ -221,7 +222,7 @@ namespace {
         qr_code_class->ce_flags |= ZEND_ACC_FINAL;
         qr_code_class->create_object = create;
         std::memcpy(&handlers, zend_get_std_object_handlers(), sizeof(handlers));
-        handlers.offset = XtOffsetOf(qr_code_object, std);
+        handlers.offset = offsetof(qr_code_object, std);
         handlers.free_obj = free_object;
         handlers.clone_obj = nullptr;
     }

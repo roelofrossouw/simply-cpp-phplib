@@ -103,7 +103,7 @@ $png = SC\svg_to_png($svg, 800);        // 800 wide; width and height 0 (the def
 SC\base64_encode($bytes);               // SC\base64_decode() throws for text that isn't base64
 ```
 
-The options are [sc::html2pdf's](https://github.com/roelofrossouw/simply-cpp-html2pdf) by name
+The options are [sc::html2pdf::converter's](https://github.com/roelofrossouw/simply-cpp-html2pdf) by name
 (`media`, `toc_title`, `outline`, `split_boxes` and `draw_margins` too); one it doesn't know
 throws, so a typo shows. Every failure is an `SC\Exception` (an `Exception`).
 

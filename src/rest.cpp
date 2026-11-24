@@ -17,6 +17,7 @@
 // array nested in a multipart field, a file part without a path) is an SC\Exception; a request
 // that got no response isn't: status() is 0 and error() says why.
 
+#include <cstddef>
 #include "php_glue.h"
 
 // php_json.h has no extern "C" of its own: without it C++ would look for a mangled php_json_encode.
@@ -61,7 +62,7 @@ namespace {
     };
 
     rest_object *object_of(zend_object *object) {
-        return reinterpret_cast<rest_object *>(reinterpret_cast<char *>(object) - XtOffsetOf(rest_object, std));
+        return reinterpret_cast<rest_object *>(reinterpret_cast<char *>(object) - offsetof(rest_object, std));
     }
 
     zend_object *create(zend_class_entry *type) {
@@ -584,7 +585,7 @@ namespace {
         rest_class->ce_flags |= ZEND_ACC_FINAL;
         rest_class->create_object = create;
         std::memcpy(&handlers, zend_get_std_object_handlers(), sizeof(handlers));
-        handlers.offset = XtOffsetOf(rest_object, std);
+        handlers.offset = offsetof(rest_object, std);
         handlers.free_obj = free_object;
         handlers.clone_obj = nullptr;
     }

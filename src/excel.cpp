@@ -34,6 +34,7 @@
 //     $total = $prices['B2']->value;
 //     SC\Csv::save($book['Prices'], 'prices.csv');    // an Excel sheet's values
 
+#include <cstddef>
 #include "php_glue.h"
 
 #include <sc/office/excel.h>
@@ -85,11 +86,11 @@ namespace {
                                                          &excel::borders::bottom, &excel::borders::diagonal_up, &excel::borders::diagonal_down};
 
     workbook_object *workbook_of(zend_object *object) {
-        return reinterpret_cast<workbook_object *>(reinterpret_cast<char *>(object) - XtOffsetOf(workbook_object, std));
+        return reinterpret_cast<workbook_object *>(reinterpret_cast<char *>(object) - offsetof(workbook_object, std));
     }
 
     part_object *part_of(zend_object *object) {
-        return reinterpret_cast<part_object *>(reinterpret_cast<char *>(object) - XtOffsetOf(part_object, std));
+        return reinterpret_cast<part_object *>(reinterpret_cast<char *>(object) - offsetof(part_object, std));
     }
 
     zend_object *create_workbook(zend_class_entry *type) {
@@ -1415,7 +1416,7 @@ namespace {
         workbook_class = register_class("SC\\Excel\\Workbook", workbook_methods, true);
         workbook_class->create_object = create_workbook;
         std::memcpy(&workbook_handlers, zend_get_std_object_handlers(), sizeof(workbook_handlers));
-        workbook_handlers.offset = XtOffsetOf(workbook_object, std);
+        workbook_handlers.offset = offsetof(workbook_object, std);
         workbook_handlers.free_obj = free_workbook;
         workbook_handlers.clone_obj = clone_workbook;
 
@@ -1431,7 +1432,7 @@ namespace {
         for (auto *each: {sheet_class, row_class, cell_class, style_class, font_class, borders_class, edge_class, alignment_class})
             each->create_object = create_part;
         std::memcpy(&part_handlers, zend_get_std_object_handlers(), sizeof(part_handlers));
-        part_handlers.offset = XtOffsetOf(part_object, std);
+        part_handlers.offset = offsetof(part_object, std);
         part_handlers.free_obj = free_part;
         part_handlers.clone_obj = nullptr; // a view into a workbook: clone the workbook instead
         part_handlers.read_property = read_property;

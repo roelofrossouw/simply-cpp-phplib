@@ -1,4 +1,4 @@
-// SC\svg_to_png(string $svg, int $width = 0, int $height = 0): string, by sc-image's sc::svg2png
+// SC\svg_to_png(string $svg, int $width = 0, int $height = 0): string, by sc-image's sc::image::svg2png
 // (libsc-image's shared library, from its package). A width or height of 0 keeps the aspect
 // ratio; both 0 is the SVG's own size.
 
@@ -25,8 +25,8 @@ namespace {
         ZEND_PARSE_PARAMETERS_END();
         sc::php::return_guarded_string(return_value, [&] {
             if (width < 0 || height < 0) throw std::invalid_argument{"SC\\svg_to_png: the width and height can't be negative"};
-            return width == 0 && height == 0 ? sc::svg2png::FromString(sc::php::view(svg))
-                                             : sc::svg2png::FromString(sc::php::view(svg), static_cast<int>(width), static_cast<int>(height),
+            return width == 0 && height == 0 ? sc::image::svg2png::from_string(sc::php::view(svg))
+                                             : sc::image::svg2png::from_string(sc::php::view(svg), static_cast<int>(width), static_cast<int>(height),
                                                                        sc::color{1, 1, 1});
         });
     }

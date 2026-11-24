@@ -12,6 +12,7 @@
 // "1.1", "1.2", ..., and an attached message's top part one level below it ("1.2.1"). A message
 // that can't be read, or a label that isn't one, is an SC\Exception.
 
+#include <cstddef>
 #include "php_glue.h"
 
 #include <sc/mime/mime.h>
@@ -35,7 +36,7 @@ namespace {
     };
 
     mail_object *object_of(zend_object *object) {
-        return reinterpret_cast<mail_object *>(reinterpret_cast<char *>(object) - XtOffsetOf(mail_object, std));
+        return reinterpret_cast<mail_object *>(reinterpret_cast<char *>(object) - offsetof(mail_object, std));
     }
 
     zend_object *create(zend_class_entry *type) {
@@ -457,7 +458,7 @@ namespace {
         mail_class->ce_flags |= ZEND_ACC_FINAL | ZEND_ACC_NOT_SERIALIZABLE;
         mail_class->create_object = create;
         std::memcpy(&handlers, zend_get_std_object_handlers(), sizeof(handlers));
-        handlers.offset = XtOffsetOf(mail_object, std);
+        handlers.offset = offsetof(mail_object, std);
         handlers.free_obj = free_object;
         handlers.clone_obj = nullptr;
     }

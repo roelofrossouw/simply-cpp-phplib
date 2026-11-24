@@ -1,4 +1,4 @@
-// SC\Html2Pdf: sc-html2pdf's sc::html2pdf (libsc-html2pdf's shared library, from its package).
+// SC\Html2Pdf: sc-html2pdf's sc::html2pdf::converter (libsc-html2pdf's shared library, from its package).
 //
 //     $pdf = new SC\Html2Pdf($html, ['header' => $header, 'size' => 'A4', 'toc_page' => 2,
 //                                    'margins' => ['top' => 10, 'first_top' => 60]]);
@@ -13,6 +13,7 @@
 // by default the ini setting sc.time_limit (300). Past it, or once the client has gone, the render
 // stops between pages and throws an SC\Exception (save() leaves no file).
 
+#include <cstddef>
 #include "php_glue.h"
 
 #include <sc/html2pdf/html2pdf.h>
@@ -28,13 +29,13 @@ namespace {
     zend_object_handlers handlers;
 
     struct html2pdf_object {
-        sc::html2pdf *pdf;
+        sc::html2pdf::converter *pdf;
         sc::php::time_limit *limit; // the render's own, counted from the start of each call
         zend_object std;
     };
 
     html2pdf_object *object_of(zend_object *object) {
-        return reinterpret_cast<html2pdf_object *>(reinterpret_cast<char *>(object) - XtOffsetOf(html2pdf_object, std));
+        return reinterpret_cast<html2pdf_object *>(reinterpret_cast<char *>(object) - offsetof(html2pdf_object, std));
     }
 
     zend_object *create(zend_class_entry *type) {
@@ -76,8 +77,8 @@ namespace {
                     "metadata", "user_password", "owner_password", "split_boxes", "draw_margins", "builtin_fonts",
                     "image_resolution", "time_limit"}); // time_limit: the extension's own (time_limit_of())
         sc::html2pdf::options settings;
-        if (zval *v = find(given, "size")) settings.size = sc::page_size_from(text_of(v));
-        if (zval *v = find(given, "landscape")) settings.turned = zend_is_true(v) ? sc::orientation::landscape : sc::orientation::portrait;
+        if (zval *v = find(given, "size")) settings.size = sc::graphics::page_size_from(text_of(v));
+        if (zval *v = find(given, "landscape")) settings.turned = zend_is_true(v) ? sc::graphics::orientation::landscape : sc::graphics::orientation::portrait;
         if (zval *v = find(given, "margins")) {
             HashTable *margins = array_of(v, "margins");
             check_keys(margins, "margin", {"top", "right", "bottom", "left", "first_top"});
@@ -135,14 +136,14 @@ namespace {
         return zval_get_double(v);
     }
 
-    sc::html2pdf &laid_out(zval *self) {
+    sc::html2pdf::converter &laid_out(zval *self) {
         auto *pdf = object_of(Z_OBJ_P(self))->pdf;
         if (!pdf) throw std::logic_error{"SC\\Html2Pdf: not constructed"};
         return *pdf;
     }
 
     // The document, its time limit counting again from now (for save() and output()).
-    sc::html2pdf &restarted(zval *self) {
+    sc::html2pdf::converter &restarted(zval *self) {
         auto &pdf = laid_out(self);
         object_of(Z_OBJ_P(self))->limit->restart();
         return pdf;
@@ -170,7 +171,7 @@ namespace {
             delete self->limit;
             self->limit = limit.release();
             // Checked between the render's steps and pages; self (and its limit) outlive the render.
-            self->pdf = new sc::html2pdf(sc::php::view(html), std::move(settings), [self] { self->limit->check(); });
+            self->pdf = new sc::html2pdf::converter(sc::php::view(html), std::move(settings), [self] { self->limit->check(); });
         });
     }
 
@@ -223,7 +224,7 @@ namespace {
         html2pdf_class = zend_register_internal_class(&type);
         html2pdf_class->create_object = create;
         std::memcpy(&handlers, zend_get_std_object_handlers(), sizeof(handlers));
-        handlers.offset = XtOffsetOf(html2pdf_object, std);
+        handlers.offset = offsetof(html2pdf_object, std);
         handlers.free_obj = free_object;
         handlers.clone_obj = nullptr; // a laid out document isn't copied
     }
