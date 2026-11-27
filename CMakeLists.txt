@@ -76,7 +76,7 @@ message(STATUS "Building for PHP ${SC_PHPLIB_PHP_VERSION} (module API ${SC_PHPLI
 # sc.so, loaded by PHP with dlopen(): no "lib" prefix, no link against PHP (its symbols resolve at
 # load time; macOS needs that said). It links the modules' shared libraries themselves, not their
 # CMake targets, which would also bring the static libraries under them into it.
-add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/passkey.cpp src/bootstrap_email.cpp src/qr_code.cpp src/rest.cpp src/mail.cpp src/word.cpp src/bankserv.cpp src/native_time.cpp src/php_glue.h)
+add_library(sc MODULE src/sc_php.cpp src/base64.cpp src/svg.cpp src/html2pdf.cpp src/pdf.cpp src/excel.cpp src/passkey.cpp src/bootstrap_email.cpp src/qr_code.cpp src/rest.cpp src/mail.cpp src/word.cpp src/bankserv.cpp src/face.cpp src/native_time.cpp src/php_glue.h)
 target_compile_options(sc PRIVATE ${SC_PHPLIB_PHP_INCLUDES})
 target_compile_definitions(sc PRIVATE SC_PHPLIB_VERSION="${SC_VERSION}")
 foreach (module sc-core sc-http sc-image sc-html2pdf sc-pdflite sc-office sc-passkey sc-bootstrap-email sc-qrencode sc-mime sc-bankserv)

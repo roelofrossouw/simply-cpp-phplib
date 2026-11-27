@@ -63,6 +63,12 @@ $xml = (new SC\Rest($location))->header('Content-Type', 'text/xml; charset=utf-8
 (new SC\Rest($url))->timeout(0)->idleTimeout(60)->get();        // no total limit, but not 60 s of silence; errorCode(): curl's number (56: broke while receiving)
 // answers come gzip/deflate-compressed when the server offers it, and are undone
 
+// Faces (sc-ai's features, read by the ai-api service on the ai server's GPU; php.ini: sc.ai_url, sc.ai_token_file)
+$features = SC\Face::features('/tmp/photo.jpg');         // the largest face's 512 numbers, null without a face
+$faces = SC\Face::faces('/tmp/photo.jpg', 5);            // each ['features' => [...], 'box' => ['left', 'top', 'width', 'height']]
+$percent = SC\Face::similarity($features, $stored);      // 100 the same face; one person from about 35; no ai-api call
+// store json_encode($features) (or a pgvector column) and compare later; the face models are for non-commercial use
+
 // Email (sc-mime): .eml and Outlook .msg read in memory, nothing written
 $mail = SC\Mail::open('/var/www/data/in/x.msg');       // or ::fromString($bytes); .eml the same
 $mail->subject(); $mail->from()[0]['address']; $mail->to(); $mail->cc(); $mail->date(); // date: unix time or null
@@ -174,6 +180,20 @@ and depends on that PHP's module API. Installing puts `sc.so` in PHP's extension
 `sc.ini` in `/etc/php/<version>/mods-available`, enables it for every SAPI (`phpenmod -s ALL sc`)
 and restarts php-fpm when it runs; upgrades restart it again, and removal disables the extension
 and restarts it.
+
+### SC\Face's settings
+
+`SC\Face` sends the picture to ai-api's `/faces` route; nothing runs on the web server's CPU. Set where
+it is in a php.ini file of your own (system settings: a script can't change them), with the token in a
+file only PHP's user can read:
+
+```ini
+; /etc/php/8.5/mods-available/sc-ai.ini, enabled with phpenmod sc-ai
+sc.ai_url = http://ai.example.com:8092
+sc.ai_token_file = /etc/php/sc-ai-token
+```
+
+ai-api's firewall must let the web server in. Calls wait at most `sc.time_limit` seconds.
 
 ## Adding to it
 

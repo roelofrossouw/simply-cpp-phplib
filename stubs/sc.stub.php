@@ -774,6 +774,60 @@ final class Bankserv
 }
 
 /**
+ * The faces in a picture, as sc-ai's features: 512 numbers each, normalised, that two pictures of
+ * one person have alike. The models run in the ai-api service (its /faces route, on the ai
+ * server's GPU), not in PHP: set where it is in php.ini (system settings only):
+ *
+ *     sc.ai_url = http://ai.example.com:8092
+ *     sc.ai_token_file = /etc/php/sc-ai-token      ; holds ai-api's bearer token, readable by PHP's user
+ *
+ *     $features = SC\Face::features('/tmp/photo.jpg');   // the largest face's 512 numbers, or null
+ *     $percent = SC\Face::similarity($features, $stored); // one person from about 35
+ *
+ * Features can be stored (json_encode(), or a pgvector column) and compared later without ai-api.
+ * The face models (InsightFace) are licensed for non-commercial use.
+ */
+final class Face
+{
+    /**
+     * The features of the picture's largest face (the one with the largest box).
+     *
+     * @param string $file A JPEG, PNG or other picture OpenCV reads.
+     * @return list<float>|null 512 numbers, or null when the picture has no face.
+     * @throws Exception When sc.ai_url or sc.ai_token_file isn't set, ai-api can't be reached or
+     *     refuses the token, or the file can't be read or isn't a picture.
+     */
+    public static function features(string $file): ?array
+    {
+    }
+
+    /**
+     * Every face in the picture (at most maxFaces), as ai-api finds them.
+     *
+     * @param int $maxFaces 1 to 100.
+     * @return list<array{features: list<float>, box: array{left: float, top: float, width: float, height: float}}>
+     *     Each face's 512 numbers and where it is, in the picture's own pixels; an empty list without faces.
+     * @throws Exception As features(), or for maxFaces outside 1 to 100.
+     */
+    public static function faces(string $file, int $maxFaces = 5): array
+    {
+    }
+
+    /**
+     * How alike two faces are: the dot product of their features (normalised again) as a percent.
+     * 100 is the same face, around 0 two unrelated people; one person from about 35. Works on stored
+     * features: no call to ai-api.
+     *
+     * @param list<float> $a 512 numbers, from features() or faces().
+     * @param list<float> $b 512 numbers.
+     * @throws Exception When either isn't 512 finite numbers, or is all zero.
+     */
+    public static function similarity(array $a, array $b): float
+    {
+    }
+}
+
+/**
  * A Word document's (.docx) text, as a reader (a person, or a language model that can't open a
  * .docx) would take it: a line per paragraph with its list number in front as Word shows it
  * ("4.1.2 the Purchaser ..."), the numbering set on the paragraph or through its style; bullets get

@@ -12,7 +12,7 @@ namespace sc::php {
     namespace {
         // The extension's parts: a new one is a file and a line here.
         const std::vector<area> &areas() {
-            static const std::vector<area> all{base64_area(), svg_area(), html2pdf_area(), pdf_area(), excel_area(), passkey_area(), bootstrap_email_area(), qr_code_area(), rest_area(), mail_area(), word_area(), bankserv_area()};
+            static const std::vector<area> all{base64_area(), svg_area(), html2pdf_area(), pdf_area(), excel_area(), passkey_area(), bootstrap_email_area(), qr_code_area(), rest_area(), mail_area(), word_area(), bankserv_area(), face_area()};
             return all;
         }
 
@@ -33,8 +33,12 @@ namespace sc::php {
 
 // sc.time_limit: a long native call's own limit in seconds (SC\Html2Pdf's 'time_limit' option
 // overrides it); 0 for none. See sc::php::time_limit.
+// sc.ai_url and sc.ai_token_file: where SC\Face finds ai-api and the file holding its bearer token. System
+// settings only (php.ini, a pool's php_admin_value): a script can't send pictures or the token elsewhere.
 PHP_INI_BEGIN()
     PHP_INI_ENTRY("sc.time_limit", "300", PHP_INI_ALL, nullptr)
+    PHP_INI_ENTRY("sc.ai_url", "", PHP_INI_SYSTEM, nullptr)
+    PHP_INI_ENTRY("sc.ai_token_file", "", PHP_INI_SYSTEM, nullptr)
 PHP_INI_END()
 
 static PHP_MINIT_FUNCTION(sc) {
@@ -56,7 +60,7 @@ static PHP_MINFO_FUNCTION(sc) {
     php_info_print_table_start();
     php_info_print_table_row(2, "simply-cpp (sc)", "enabled");
     php_info_print_table_row(2, "Version", SC_PHPLIB_VERSION);
-    php_info_print_table_row(2, "Provides", "SC\\Html2Pdf, SC\\Pdf, SC\\Rest, SC\\Excel\\Workbook, SC\\Word, SC\\Passkey, SC\\svg_to_png(), SC\\base64_encode(), SC\\base64_decode()");
+    php_info_print_table_row(2, "Provides", "SC\\Html2Pdf, SC\\Pdf, SC\\Rest, SC\\Excel\\Workbook, SC\\Word, SC\\Passkey, SC\\Face, SC\\svg_to_png(), SC\\base64_encode(), SC\\base64_decode()");
     php_info_print_table_end();
     DISPLAY_INI_ENTRIES();
 }

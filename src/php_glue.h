@@ -113,4 +113,5 @@ namespace sc::php {
     area mail_area();
     area word_area();
     area bankserv_area();
+    area face_area();
 }
